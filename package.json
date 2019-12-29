@@ -1,0 +1,23 @@
+{
+  "name": "a-playground",
+  "version": "1.0.0",
+  "description": "Personal A-Frame playground",
+  "main": "aframe.min.js",
+  "scripts": {
+    "start": "http-server -S -C ssh/cert.pem -K ssh/key.pem",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "http-server": "0.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/maxwellito/a-playground.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maxwellito/a-playground/issues"
+  },
+  "homepage": "https://github.com/maxwellito/a-playground#readme"
+}
