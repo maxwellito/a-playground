@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Infinite Mesh</title>
+    <meta name="description" content="Hello, WebVR! • A-Frame" />
+    <script src="lib/aframe.min.js"></script>
+    <script src="services/color.js"></script>
+    <script>
+      AFRAME.registerComponent('movingmesh', {
+        init: function() {
+          // Do something when component first attached.
+          const pos = this.el.getAttribute('position');
+        },
+
+        tick: function(time, timeDelta) {
+          // Do something on every scene tick or frame.
+          const pos = this.el.getAttribute('position');
+          const prevZ = Math.floor(pos.z);
+          pos.z += 1 / 16;
+          pos.y = Math.cos(pos.z / 4) + 1;
+          if (this.lastMesh) {
+            this.lastMesh.object3D.children.forEach(ch => {
+              const { opacity } = ch.material;
+              ch.material.opacity = Math.max(pos.z % 1, opacity);
+            });
+          }
+          if (prevZ !== Math.floor(pos.z)) {
+            var meshToMove = meshWrap.firstElementChild;
+
+            meshWrap.removeChild(meshToMove);
+            this.lastMesh = makeLine(meshToMove);
+            meshWrap.appendChild(this.lastMesh);
+          }
+          this.el.setAttribute('postiion', pos);
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene background="color: #000">
+      <a-entity></a-entity>
+    </a-scene>
+  </body>
+
+  <script>
+    const scene = document.querySelector('a-scene');
+
+    const c = rainbowPalette();
+
+    let previousLine;
+    let zOffset = 0;
+    const mapLength = 10; // In squares
+    const mapIndexes = [];
+    for (let i = 0; i <= mapLength; i++) {
+      mapIndexes.push(i);
+    }
+
+    function makeLine(mesh) {
+      let lineIndex = 0;
+      const opacity = mesh ? 0 : 1;
+      const z = 0;
+      const color = c[zOffset % c.length];
+      const line = mapIndexes.map(
+        (_, i) =>
+          Math.abs((i - mapLength / 2) / (mapLength / 4)) *
+            Math.random() *
+            Math.sin(zOffset / 100) +
+          Math.sin(zOffset / 4)
+      );
+
+      mesh = mesh || document.createElement('a-entity');
+
+      if (previousLine) {
+        previousLine.forEach((_, x) => {
+          mesh.setAttribute(`line__${++lineIndex}`, {
+            start: {
+              x,
+              y: previousLine[x],
+              z: z + 1
+            },
+            end: {
+              x,
+              y: line[x],
+              z
+            },
+            color,
+            opacity
+          });
+        });
+      }
+      previousLine = line;
+
+      let previousY;
+      line.forEach((y, x) => {
+        if (previousY === undefined) {
+          previousY = y;
+          return;
+        }
+        mesh.setAttribute(++lineIndex === 1 ? 'line' : `line__${lineIndex}`, {
+          start: { x: x - 1, y: previousY, z },
+          end: { x, y, z },
+          color,
+          opacity
+        });
+        previousY = y;
+      });
+
+      mesh.setAttribute('position', {
+        x: -(mapLength / 2),
+        y: 0,
+        z: -(mapLength / 2) - zOffset
+      });
+      zOffset++;
+
+      return mesh;
+    }
+
+    const meshWrap = document.createElement('a-entity');
+    meshWrap.setAttribute('position', { x: 0, y: 0, z: +(mapLength / 2) });
+    meshWrap.setAttribute('movingmesh', '');
+    for (let i = 0; i < 20; i++) {
+      meshWrap.appendChild(makeLine());
+    }
+
+    scene.appendChild(meshWrap);
+  </script>
+</html>
