@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>CUBE</title>
+    <meta name="description" content="Puke-VR" />
+    <script src="../lib/aframe.min.js"></script>
+    <script>
+      let isTriggerOn;
+      AFRAME.registerComponent('rotation-reader', {
+        init: function() {
+          window.headsetRotation = this.el.object3D.rotation;
+        }
+      });
+
+      AFRAME.registerComponent('motor', {
+        init: function() {
+          this.speed = 0;
+          this.orientationVector = new THREE.Vector3();
+        },
+
+        tick: function() {
+          if (!headsetRotation) {
+            return;
+          }
+          this.speed += isTriggerOn ? 1 / 128 : -1 / 128;
+          this.speed = Math.max(0, Math.min(1, this.speed));
+          if (this.speed === 0) {
+            return;
+          }
+          console.log('>>>', this.speed);
+          this.el.object3D.rotation.x += headsetRotation.x / 16;
+          this.el.object3D.rotation.y += headsetRotation.y / 16;
+
+          this.el.object3D.getWorldDirection(this.orientationVector);
+          this.el.object3D.position.x -=
+            (this.orientationVector.x * this.speed) / 16;
+          this.el.object3D.position.y -=
+            (this.orientationVector.y * this.speed) / 16;
+          this.el.object3D.position.z -=
+            (this.orientationVector.z * this.speed) / 16;
+        }
+      });
+
+      AFRAME.registerComponent('keepincube', {
+        tick: function() {
+          const { position } = this.el.object3D;
+
+          if (position.x < -10) {
+            position.x += 20;
+          } else if (position.x > 10) {
+            position.x -= 20;
+          }
+
+          if (position.y < 1) {
+            position.y += 20;
+          } else if (position.y > 21) {
+            position.y -= 20;
+          }
+
+          if (position.z < -10) {
+            position.z += 20;
+          } else if (position.z > 10) {
+            position.z -= 20;
+          }
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene background="color: #000">
+      <a-entity id="mesh-cube"></a-entity>
+      <a-entity id="pov" motor keepincube position="0 2 0">
+        <a-entity
+          id="controller"
+          oculus-touch-controls="hand: right"
+        ></a-entity>
+        <a-camera rotation-reader></a-camera>
+      </a-entity>
+      <a-text
+        id="debugText"
+        value="WARNING!\nThis experience is highly unconfortable.\nMove your head and use the\ntrigger of the right controller to\naccelerate."
+        position="0 3.5 -2"
+        color="yellow"
+        width="5"
+        align="center"
+      ></a-text>
+    </a-scene>
+  </body>
+
+  <script>
+    // Cube build
+    const scene = document.querySelector('a-scene');
+    const mesh = document.getElementById('mesh-cube');
+    const cubeLength = 20;
+
+    mesh.setAttribute('position', {
+      x: -cubeLength / 2,
+      y: 1,
+      z: -cubeLength / 2
+    });
+
+    let squareCount = 0;
+    let squareIndexes = {
+      x: -50,
+      y: -50 - 2 * cubeLength,
+      z: -50 - cubeLength
+    };
+    function next() {
+      const initialCount = squareCount;
+      for (i in squareIndexes) {
+        //console.log(i, squareIndexes[i]);
+        if (squareIndexes[i] >= 0 && squareIndexes[i] <= cubeLength) {
+          square(squareIndexes[i], i);
+          squareCount++;
+        }
+        squareIndexes[i]++;
+      }
+      console.log(initialCount, squareCount);
+      if (initialCount === squareCount && !!squareCount) {
+        clearInterval(mainInterval);
+      }
+    }
+
+    function square(index, axis) {
+      console.log(index, axis);
+      switch (axis) {
+        case 'x':
+          a = 'y';
+          b = 'z';
+          break;
+
+        case 'y':
+          a = 'x';
+          b = 'z';
+          break;
+
+        case 'z':
+          a = 'x';
+          b = 'y';
+          break;
+      }
+
+      let opacity;
+      if (index === 0 || index === cubeLength) {
+        opacity = 0.2;
+      } else if (index % 4 === 0) {
+        opacity = 0.2;
+      } else {
+        opacity = 0.1;
+      }
+      console.log(opacity);
+
+      lines(
+        [
+          {
+            start: { [axis]: index, [a]: 0, [b]: 0 },
+            end: { [axis]: index, [a]: cubeLength, [b]: 0 }
+          },
+          {
+            start: { [axis]: index, [a]: cubeLength, [b]: 0 },
+            end: { [axis]: index, [a]: cubeLength, [b]: cubeLength }
+          },
+          {
+            start: { [axis]: index, [a]: cubeLength, [b]: cubeLength },
+            end: { [axis]: index, [a]: 0, [b]: cubeLength }
+          },
+          {
+            start: { [axis]: index, [a]: 0, [b]: cubeLength },
+            end: { [axis]: index, [a]: 0, [b]: 0 }
+          }
+        ],
+        opacity
+      );
+    }
+
+    let lineIndex = 0;
+    function lines(lines, opacity) {
+      lines.forEach(line => {
+        const { start, end } = line;
+        mesh.setAttribute(++lineIndex === 1 ? 'line' : `line__${lineIndex}`, {
+          start,
+          end,
+          color: '#fff',
+          opacity
+        });
+      });
+    }
+
+    const mainInterval = setInterval(next, 100);
+
+    // Controller listener
+    const controller = document.getElementById('controller');
+    controller.addEventListener('triggerdown', () => {
+      isTriggerOn = true;
+    });
+    controller.addEventListener('triggerup', () => {
+      isTriggerOn = false;
+    });
+  </script>
+</html>
