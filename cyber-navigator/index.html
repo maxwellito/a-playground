@@ -67,7 +67,13 @@
           pos.z += 1 / 16;
           //pos.y = Math.cos(pos.z / 4) + 1;
           if (this.lastMesh) {
-            this.lastMesh.object3D.children.forEach(ch => {
+            // this.lastMesh.childNodes.forEach(m =>
+            //   m.object3D.children.forEach(ch => {
+            //     const { opacity } = ch.material;
+            //     ch.material.opacity = Math.max(pos.z % 1, opacity);
+            //   })
+            // );
+            this.lastMesh.childNodes[0].object3D.children.forEach(ch => {
               const { opacity } = ch.material;
               ch.material.opacity = Math.max(pos.z % 1, opacity);
             });
@@ -115,8 +121,8 @@
       mapIndexes.push(i);
     }
 
-    function makeLine(mesh) {
-      const opacity = mesh ? 0 : 1;
+    function makeLine(parcel) {
+      const opacity = parcel ? 0 : 1;
       const color = c[zOffset % c.length]; // '#ff1493'; //
       const line = mapIndexes.map(
         (_, i) =>
@@ -126,36 +132,53 @@
           Math.sin(zOffset / 4)
       );
 
-      mesh = mesh || document.createElement('a-entity');
+      // Init parcel if needed
+      parcel = parcel || document.createElement('a-entity');
 
+      // Mesh
+      let mesh = parcel.querySelector('[floorline]');
+      if (!mesh) {
+        console.log('create linfloor');
+        mesh = document.createElement('a-entity');
+        parcel.appendChild(mesh);
+      }
       mesh.setAttribute('floorline', {
         yIndexes: line,
         yIndexesPrev: previousLine,
         color
       });
-      mesh.setAttribute('position', {
-        x: -(mapLength / 2),
-        y: 0,
-        z: -(mapLength / 2) - zOffset
-      });
 
-      if (zOffset === 14) {
-        const wall = document.createElement('a-entity');
+      let wall = parcel.querySelector('[wall]');
+      if (zOffset === 14 || zOffset === 25 || wall) {
+        if (!wall) {
+          console.log('create wall');
+          wall = document.createElement('a-entity');
+          parcel.appendChild(wall);
+        }
+        const xStart = 0.25 + Math.random() * 6,
+          xEnd = xStart + 1.5 + Math.random() * 2,
+          yStart = Math.max(...line) + Math.random() * 4,
+          yEnd = Math.min(yStart + 1 + Math.random() * 1.25, 7.75);
         wall.setAttribute('wall', {
           yIndexes: line,
           color: '#1af',
-          xStart: 2.3,
-          xEnd: 4.8,
-          yStart: 2.8,
-          yEnd: 4.2
+          xStart,
+          xEnd,
+          yStart,
+          yEnd
         });
-        mesh.appendChild(wall);
       }
 
       previousLine = line;
       zOffset++;
 
-      return mesh;
+      parcel.setAttribute('position', {
+        x: -(mapLength / 2),
+        y: 0,
+        z: -(mapLength / 2) - zOffset
+      });
+
+      return parcel;
     }
 
     const meshWrap = document.createElement('a-entity');

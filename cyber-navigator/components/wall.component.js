@@ -39,7 +39,7 @@ AFRAME.registerComponent('wall', {
     });
 
     // Horizontal lines
-    let y = Math.ceil(Math.min(...line));
+    let y = Math.ceil(Math.max(...line));
     for (; y <= 8; y++) {
       if (y <= this.data.yStart || y >= this.data.yEnd) {
         vertices.push([
@@ -93,5 +93,10 @@ AFRAME.registerComponent('wall', {
         opacity: 1
       });
     });
+
+    const maxLines = this.el.object3D.children.length;
+    for (lineIndex++; lineIndex <= maxLines; lineIndex++) {
+      this.el.removeAttribute(`line__${lineIndex}`);
+    }
   }
 });
