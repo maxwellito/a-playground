@@ -24,3 +24,16 @@ function rainbowPalette() {
   }
   return c;
 }
+
+function pinkPalette() {
+  let i = 0;
+  const c = [];
+
+  for (i = 15; i >= 0; i--) {
+    c.push(`#f0${i.toString(16)}`);
+  }
+  for (i = 0; i < 15; i++) {
+    c.push(`#f0${i.toString(16)}`);
+  }
+  return c;
+}
