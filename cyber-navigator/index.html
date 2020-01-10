@@ -12,6 +12,8 @@
     <script src="components/brokenpiece.component.js"></script>
     <script src="components/skeletonbox.component.js"></script>
     <script src="components/fall.component.js"></script>
+
+    <script src="components/floorline.component.js"></script>
     <script>
       let isTriggerOn;
       AFRAME.registerComponent('rotation-reader', {
@@ -99,7 +101,6 @@
   </body>
 
   <script>
-    const pov = document.querySelector('#pov');
     const scene = document.querySelector('a-scene');
     const camera = document.querySelector('[camera]');
 
@@ -114,9 +115,7 @@
     }
 
     function makeLine(mesh) {
-      let lineIndex = 0;
       const opacity = mesh ? 0 : 1;
-      const z = 0;
       const color = c[zOffset % c.length]; // '#ff1493'; //
       const line = mapIndexes.map(
         (_, i) =>
@@ -128,40 +127,13 @@
 
       mesh = mesh || document.createElement('a-entity');
 
-      if (previousLine) {
-        previousLine.forEach((_, x) => {
-          mesh.setAttribute(`line__${++lineIndex}`, {
-            start: {
-              x,
-              y: previousLine[x],
-              z: z + 1
-            },
-            end: {
-              x,
-              y: line[x],
-              z
-            },
-            color,
-            opacity
-          });
-        });
-      }
-      previousLine = line;
-
-      let previousY;
-      line.forEach((y, x) => {
-        if (previousY === undefined) {
-          previousY = y;
-          return;
-        }
-        mesh.setAttribute(++lineIndex === 1 ? 'line' : `line__${lineIndex}`, {
-          start: { x: x - 1, y: previousY, z },
-          end: { x, y, z },
-          color,
-          opacity
-        });
-        previousY = y;
+      mesh.setAttribute('floorline', {
+        yIndexes: line,
+        yIndexesPrev: previousLine,
+        color
       });
+
+      previousLine = line;
 
       mesh.setAttribute('position', {
         x: -(mapLength / 2),
