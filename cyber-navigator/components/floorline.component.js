@@ -8,7 +8,6 @@ AFRAME.registerComponent('floorline', {
 
   init: function() {
     this.update();
-    this.i = Date.now();
   },
 
   update: function(oldData) {
