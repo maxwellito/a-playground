@@ -10,45 +10,61 @@ AFRAME.registerComponent('floorline', {
     this.update();
   },
 
-  update: function(oldData) {
-    let lineIndex = 0,
-      z = 0,
+  update: function() {
+    let z = 0,
       previousLine = this.data.yIndexesPrev,
       line = this.data.yIndexes,
       { color, opacity } = this.data;
 
+    var MAX_POINTS = 11;
+
+    // Geometry
+    this.geometry = this.geometry || new THREE.BufferGeometry();
+    this.positions =
+      this.positions || new Float32Array(MAX_POINTS * (3 * 3) + 3 * 2);
+    var positions = this.positions;
+    var bIndex = 0;
+
+    for (let x = 0; x <= MAX_POINTS; x++) {
+      if (previousLine) {
+        positions[bIndex++] = x;
+        positions[bIndex++] = previousLine[x];
+        positions[bIndex++] = z + 1;
+        positions[bIndex++] = x;
+        positions[bIndex++] = line[x];
+        positions[bIndex++] = z;
+      }
+      if (x < MAX_POINTS) {
+        positions[bIndex++] = x + 1;
+        positions[bIndex++] = line[x + 1];
+        positions[bIndex++] = z;
+      }
+    }
+    this.geometry.addAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3)
+    );
+
+    // Draw range
     if (previousLine) {
-      previousLine.forEach((_, x) => {
-        this.el.setAttribute(`line__${++lineIndex}`, {
-          start: {
-            x,
-            y: previousLine[x],
-            z: z + 1
-          },
-          end: {
-            x,
-            y: line[x],
-            z
-          },
-          color,
-          opacity
-        });
-      });
+      this.geometry.setDrawRange(0, MAX_POINTS * (3 * 3) + 3 * 2);
+    } else {
+      this.geometry.setDrawRange(0, MAX_POINTS); // draw ALL THE points, only
     }
 
-    let previousY;
-    line.forEach((y, x) => {
-      if (previousY === undefined) {
-        previousY = y;
-        return;
-      }
-      this.el.setAttribute(++lineIndex === 1 ? 'line' : `line__${lineIndex}`, {
-        start: { x: x - 1, y: previousY, z },
-        end: { x, y, z },
-        color,
-        opacity
-      });
-      previousY = y;
-    });
+    // Material
+    this.material = this.material || new THREE.LineBasicMaterial();
+    this.material.color = new THREE.Color(miniHex(color));
+    this.material.opacity = opacity;
+
+    // Append line
+    if (!this.line) {
+      this.line = new THREE.Line(this.geometry, this.material);
+      this.el.object3D.add(this.line);
+    }
   }
 });
+
+function miniHex(c) {
+  return parseInt(`${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`, 16);
+}
