@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Asteroids</title>
+    <meta name="description" content="Hello, WebVR! • A-Frame" />
+    <script src="../lib/aframe.min.js"></script>
+    <script src="../services/color.js"></script>
+    <script src="../services/utils.js"></script>
+
+    <script src="./controllers.js"></script>
+    <script src="./mesh/asteroid.js"></script>
+    <script src="./mesh/spaceship.js"></script>
+  </head>
+  <body>
+    <a-scene background="color: #000">
+      <a-entity id="space"></a-entity>
+      <a-entity id="pov" motor>
+        <a-camera
+          rotation-reader
+          far="200"
+          near=".5"
+          position="0 0 0"
+        ></a-camera>
+        <a-entity
+          id="controller"
+          oculus-touch-controls="hand: right"
+          rotation-reader
+        ></a-entity>
+        <!-- <a-text
+          id="debugText"
+          value="--"
+          position="0 0 -1"
+          color="yellow"
+          width="5"
+          align="center"
+        ></a-text> -->
+      </a-entity>
+    </a-scene>
+  </body>
+
+  <script>
+    const space = document.querySelector('#space');
+    const scene = document.querySelector('a-scene');
+    const pov = document.querySelector('#pov');
+    const debugText = document.querySelector('#debugText');
+    const camera = document.querySelector('[camera]');
+
+    // Build spaceship
+    const x = makeSpaceship(0.75, 0.375, 1, 0.75, 0xffffff);
+    x.lines.scale.set(3, 3, 3);
+    x.lines.position.set(0, -0.5, 0);
+    pov.object3D.add(x.lines);
+
+    // Build Space
+    const model = makeAsteroid(0xbbbbbb);
+    const asteroids = [];
+    for (var i = 0; i < 500; i++) {
+      const mesh = model.cloneMesh();
+      const ast = new Asteroid(mesh);
+      mesh.receiveShadow = true;
+      scene.object3D.add(mesh);
+      asteroids.push(ast);
+    }
+
+    var xx = 0;
+    function updateAsteroids() {
+      const z = pov.object3D.position.z;
+      // debugText.setAttribute('value', `${Math.floor(z)} / ${xx}`);
+      asteroids.forEach(x => x.tick(z));
+      setTimeout(updateAsteroids, 16);
+    }
+
+    updateAsteroids();
+
+    // Controller listener
+    const controller = document.getElementById('controller');
+    controller.addEventListener('gripdown', () => {
+      isTriggerOn = true;
+    });
+    controller.addEventListener('gripup', () => {
+      isTriggerOn = false;
+    });
+    window.addEventListener('click', () => {
+      isTriggerOn = !isTriggerOn;
+    });
+
+    /// Playing with lights
+
+    const clrs = [
+      [
+        { r: 1, g: 1, b: 1 },
+        { r: 1, g: 1, b: 1 },
+        { r: 0, g: 0, b: 0 }
+      ],
+      [
+        { r: 1, g: 0, b: 0 },
+        { r: 0, g: 0, b: 1 },
+        { r: 0, g: 1, b: 0 }
+      ],
+      [
+        { r: 0, g: 1, b: 0 },
+        { r: 1, g: 0, b: 0 },
+        { r: 0, g: 0, b: 1 }
+      ],
+      [
+        { r: 0, g: 0, b: 1 },
+        { r: 0, g: 1, b: 0 },
+        { r: 1, g: 0, b: 0 }
+      ],
+      [
+        { r: 0, g: 1, b: 1 },
+        { r: 1, g: 1, b: 0 },
+        { r: 1, g: 0, b: 1 }
+      ],
+      [
+        { r: 1, g: 0, b: 1 },
+        { r: 0, g: 1, b: 1 },
+        { r: 1, g: 1, b: 0 }
+      ],
+      [
+        { r: 1, g: 1, b: 0 },
+        { r: 1, g: 0, b: 1 },
+        { r: 0, g: 1, b: 1 }
+      ]
+    ];
+    let clrsIndex = 0;
+
+    let lightA, lightB;
+
+    const changeColor = () => {
+      try {
+        if (!lightA) {
+          const lights = document.querySelectorAll(
+            '[data-aframe-default-light]'
+          );
+          if (!lights.length) {
+            return;
+          }
+          lightA = lights[0];
+          lightB = lights[1];
+        }
+        lightA.object3D.children[0].color = clrs[clrsIndex][0];
+        lightB.object3D.children[0].color = clrs[clrsIndex][1];
+        scene.object3D.background.r = clrs[clrsIndex][2].r;
+        scene.object3D.background.g = clrs[clrsIndex][2].g;
+        scene.object3D.background.b = clrs[clrsIndex][2].b;
+        clrsIndex = (clrsIndex + 1) % clrs.length;
+      } catch (e) {
+        console.log('>>>>', e);
+      }
+    };
+
+    controller.addEventListener('triggerdown', changeColor);
+    document.addEventListener('keydown', changeColor);
+  </script>
+</html>
