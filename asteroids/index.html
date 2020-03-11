@@ -10,18 +10,20 @@
 
     <script src="./controllers.js"></script>
     <script src="./mesh/asteroid.js"></script>
+    <script src="./mesh/bullet.js"></script>
     <script src="./mesh/spaceship.js"></script>
+
+    <script src="./objects/asteroid.js"></script>
+    <script src="./objects/bullet.js"></script>
+    <script src="./objects/space.js"></script>
   </head>
   <body>
     <a-scene background="color: #000">
       <a-entity id="space"></a-entity>
-      <a-entity id="pov" motor>
-        <a-camera
-          rotation-reader
-          far="200"
-          near=".5"
-          position="0 0 0"
-        ></a-camera>
+      <a-entity id="pov" motor rotation="0.01 0.01 0.01">
+        <a-entity id="camerawrap">
+          <a-camera far="200" near=".5" position="0 0 0"></a-camera>
+        </a-entity>
         <a-entity
           id="controller"
           oculus-touch-controls="hand: right"
@@ -40,7 +42,7 @@
   </body>
 
   <script>
-    const space = document.querySelector('#space');
+    const spaceMesh = document.querySelector('#space');
     const scene = document.querySelector('a-scene');
     const pov = document.querySelector('#pov');
     const debugText = document.querySelector('#debugText');
@@ -51,30 +53,25 @@
     x.lines.scale.set(3, 3, 3);
     x.lines.position.set(0, -0.5, 0);
     pov.object3D.add(x.lines);
+    pov.object3D.position.z = 50;
 
     // Build Space
-    const model = makeAsteroid(0xbbbbbb);
-    const asteroids = [];
-    for (var i = 0; i < 500; i++) {
-      const mesh = model.cloneMesh();
-      const ast = new Asteroid(mesh);
-      mesh.receiveShadow = true;
-      scene.object3D.add(mesh);
-      asteroids.push(ast);
-    }
+    const space = new Space(spaceMesh, 100, 100);
+    space.addAsteroids(200);
 
-    var xx = 0;
+    // Update space
     function updateAsteroids() {
-      const z = pov.object3D.position.z;
-      // debugText.setAttribute('value', `${Math.floor(z)} / ${xx}`);
-      asteroids.forEach(x => x.tick(z));
+      space.tick(pov.object3D.position);
       setTimeout(updateAsteroids, 16);
     }
-
     updateAsteroids();
 
     // Controller listener
     const controller = document.getElementById('controller');
+    let startBullet = false;
+    controller.addEventListener('triggerdown', () => {
+      startBullet = true;
+    });
     controller.addEventListener('gripdown', () => {
       isTriggerOn = true;
     });
@@ -83,75 +80,78 @@
     });
     window.addEventListener('click', () => {
       isTriggerOn = !isTriggerOn;
+      startBullet = true;
     });
 
-    /// Playing with lights
+    const lights = document.querySelectorAll('[data-aframe-default-light]');
+    const lightA = lights[0];
+    const lightB = lights[1];
 
-    const clrs = [
-      [
-        { r: 1, g: 1, b: 1 },
-        { r: 1, g: 1, b: 1 },
-        { r: 0, g: 0, b: 0 }
-      ],
-      [
-        { r: 1, g: 0, b: 0 },
-        { r: 0, g: 0, b: 1 },
-        { r: 0, g: 1, b: 0 }
-      ],
-      [
-        { r: 0, g: 1, b: 0 },
-        { r: 1, g: 0, b: 0 },
-        { r: 0, g: 0, b: 1 }
-      ],
-      [
-        { r: 0, g: 0, b: 1 },
-        { r: 0, g: 1, b: 0 },
-        { r: 1, g: 0, b: 0 }
-      ],
-      [
-        { r: 0, g: 1, b: 1 },
-        { r: 1, g: 1, b: 0 },
-        { r: 1, g: 0, b: 1 }
-      ],
-      [
-        { r: 1, g: 0, b: 1 },
-        { r: 0, g: 1, b: 1 },
-        { r: 1, g: 1, b: 0 }
-      ],
-      [
-        { r: 1, g: 1, b: 0 },
-        { r: 1, g: 0, b: 1 },
-        { r: 0, g: 1, b: 1 }
-      ]
-    ];
-    let clrsIndex = 0;
+    var raycaster = new THREE.Raycaster();
 
-    let lightA, lightB;
+    function render(origin, direction, rotation) {
+      direction.negate();
 
-    const changeColor = () => {
-      try {
-        if (!lightA) {
-          const lights = document.querySelectorAll(
-            '[data-aframe-default-light]'
-          );
-          if (!lights.length) {
-            return;
-          }
-          lightA = lights[0];
-          lightB = lights[1];
-        }
-        lightA.object3D.children[0].color = clrs[clrsIndex][0];
-        lightB.object3D.children[0].color = clrs[clrsIndex][1];
-        scene.object3D.background.r = clrs[clrsIndex][2].r;
-        scene.object3D.background.g = clrs[clrsIndex][2].g;
-        scene.object3D.background.b = clrs[clrsIndex][2].b;
-        clrsIndex = (clrsIndex + 1) % clrs.length;
-      } catch (e) {
-        console.log('>>>>', e);
+      // update the picking ray with the camera and mouse position
+      raycaster.set(origin, direction);
+
+      // calculate objects intersecting the picking ray
+      var intersects = raycaster.intersectObjects(spaceMesh.object3D.children);
+
+      for (var i = 0; i < intersects.length; i++) {
+        intersects[i].object.material = new THREE.MeshLambertMaterial({
+          color: 0xff0000
+        });
       }
-    };
 
-    controller.addEventListener('triggerdown', changeColor);
-    document.addEventListener('keydown', changeColor);
+      scene.renderer.render(scene.object3D, camera.object3D.children[0]);
+      lol(origin, direction);
+
+      if (startBullet) {
+        startBullet = false;
+        var v = direction.clone();
+
+        v.normalize();
+        const xx = new BulletMesh();
+        xx.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+        scene.object3D.add(xx.mesh);
+        const xxx = new Bullet(xx.mesh, origin, v);
+        const xxxx = setInterval(() => {
+          xxx.tick();
+          if (xxx.distanceLeft < 0) {
+            clearInterval(xxxx);
+          }
+        }, 16);
+      }
+    }
+
+    var lineray;
+
+    function lol(pointA, direction) {
+      // Draw a line from pointA in the given direction at distance 100
+      // var pointA = new THREE.Vector3( 0, 0, 0 );
+      // var direction = new THREE.Vector3( 10, 0, 0 );
+      // direction.normalize();
+
+      var distance = 100; // at what distance to determine pointB
+
+      var pointB = new THREE.Vector3();
+      pointB.addVectors(pointA, direction.multiplyScalar(distance));
+
+      var geometry = new THREE.Geometry();
+      geometry.vertices.push(pointA);
+      geometry.vertices.push(pointB);
+      if (!lineray) {
+        console.log('A');
+        var material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+        lineray = new THREE.Line(geometry, material);
+        scene.object3D.add(lineray);
+      } else {
+        console.log('B');
+        lineray.geometry = geometry;
+      }
+    }
+
+    controller.object3D.rotation.set(0, 0.1, 0);
   </script>
 </html>

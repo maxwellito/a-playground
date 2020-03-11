@@ -15,8 +15,10 @@ AFRAME.registerComponent('motor', {
     if (!headsetRotation) {
       return;
     }
-    this.speed += isTriggerOn ? 1 / 32 : -1 / 32;
-    this.speed = Math.max(0, Math.min(16, this.speed));
+    // this.speed += isTriggerOn ? 1 / 32 : -1 / 32;
+    this.speed += isTriggerOn ? 0.125 : -0.5;
+    this.speed = Math.max(0, Math.min(8, this.speed));
+    // this.speed = Math.min(0, Math.max(-16, this.speed));
     if (this.speed === 0) {
       return;
     }
@@ -32,5 +34,11 @@ AFRAME.registerComponent('motor', {
     this.el.object3D.position.x -= (this.orientationVector.x * this.speed) / 16;
     this.el.object3D.position.y -= (this.orientationVector.y * this.speed) / 16;
     this.el.object3D.position.z -= (this.orientationVector.z * this.speed) / 16;
+
+    render(
+      this.el.object3D.position,
+      this.orientationVector,
+      this.el.object3D.rotation
+    );
   }
 });

@@ -1,43 +1,43 @@
-class Asteroid {
-  constructor(mesh) {
-    this.mesh = mesh;
-    this.radius = Math.random();
-    this.axis = Math.random() * Math.PI * 2;
-    this.speed = 1 / this.radius / 1024;
-    this.z = -4 - Math.random() * 150;
-    this.rotX = Math.random() / 128;
-    this.rotY = Math.random() / 128;
-    this.scale = Math.pow(this.radius, 3);
+// class Asteroid {
+//   constructor(mesh) {
+//     this.mesh = mesh;
+//     this.radius = Math.random();
+//     this.axis = Math.random() * Math.PI * 2;
+//     this.speed = 1 / this.radius / 1024;
+//     this.z = -4 - Math.random() * 150;
+//     this.rotX = Math.random() / 128;
+//     this.rotY = Math.random() / 128;
+//     this.scale = Math.pow(this.radius, 3);
 
-    mesh.scale.set(this.scale, this.scale, this.scale);
-    mesh.rotation.set(Math.random(), Math.random(), Math.random());
-  }
+//     mesh.scale.set(this.scale, this.scale, this.scale);
+//     mesh.rotation.set(Math.random(), Math.random(), Math.random());
+//   }
 
-  tick(z) {
-    let scale = this.mesh.scale.x;
-    if (z < this.z) {
-      this.z -= 150;
-      scale = 0;
-      xx++;
-    }
-    if (scale < this.scale) {
-      scale = Math.min(this.scale, scale + this.scale / 32);
-      this.mesh.scale.set(scale, scale, scale);
-    }
+//   tick(z) {
+//     let scale = this.mesh.scale.x;
+//     if (z < this.z) {
+//       this.z -= 150;
+//       scale = 0;
+//       xx++;
+//     }
+//     if (scale < this.scale) {
+//       scale = Math.min(this.scale, scale + this.scale / 32);
+//       this.mesh.scale.set(scale, scale, scale);
+//     }
 
-    this.axis += this.speed;
-    this.mesh.position.set(
-      Math.cos(this.axis) * (1 + this.radius * 6),
-      Math.sin(this.axis) * (1 + this.radius * 6),
-      this.z
-    );
-    this.mesh.rotation.set(
-      this.mesh.rotation.x + this.rotX,
-      this.mesh.rotation.y + this.rotY,
-      this.mesh.rotation.z
-    );
-  }
-}
+//     this.axis += this.speed;
+//     this.mesh.position.set(
+//       Math.cos(this.axis) * (1 + this.radius * 6),
+//       Math.sin(this.axis) * (1 + this.radius * 6),
+//       this.z
+//     );
+//     this.mesh.rotation.set(
+//       this.mesh.rotation.x + this.rotX,
+//       this.mesh.rotation.y + this.rotY,
+//       this.mesh.rotation.z
+//     );
+//   }
+// }
 
 class AsteroidMesh {
   constructor(geometry, color) {
