@@ -37,3 +37,7 @@ function pinkPalette() {
   }
   return c;
 }
+
+function miniHex(c) {
+  return parseInt(`${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`, 16);
+}

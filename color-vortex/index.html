@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ColorVortex</title>
+    <script src="../lib/aframe.min.js"></script>
+    <script src="../services/color.js"></script>
+  </head>
+  <body>
+    <a-scene background="color: #000">
+      <a-entity id="space"></a-entity>
+      <a-entity id="decor"></a-entity>
+      <a-entity id="pov">
+        <a-entity id="camerawrap">
+          <a-camera far="10000" near=".5" position="0 0 0"></a-camera>
+          <a-entity
+            id="controller"
+            oculus-touch-controls="hand: left"
+            visible="false"
+          ></a-entity>
+        </a-entity>
+      </a-entity>
+    </a-scene>
+  </body>
+
+  <script>
+    const spaceMesh = document.querySelector('#space');
+    const decor = document.querySelector('#decor');
+    const pov = document.querySelector('#pov');
+
+    // SHADE ////////////////////////////////////////
+    const mWidth = 200;
+    const mHeight = 200;
+    const rainbow = rainbowPalette().map(x => new THREE.Color(x));
+
+    let instanceCount = 0;
+    let aOrigin = [];
+
+    for (let x = 0; x < mWidth; x++) {
+      for (let y = 0; y < mHeight; y++) {
+        const originX = Math.floor(x - mWidth / 2);
+        const originY = Math.floor(y - mHeight / 2);
+        const colorIndex = Math.abs(x) + y;
+        const speed = Math.random() * 8;
+
+        if (originX > -4 && originX < 4 && originY > -4 && originY < 4) {
+          continue;
+        }
+
+        instanceCount++;
+        aOrigin.push(originX, originY, colorIndex, speed);
+      }
+    }
+
+    let baseGeometry = new THREE.BoxBufferGeometry(1, 1, 10);
+    let instancedGeometry = new THREE.InstancedBufferGeometry().copy(
+      baseGeometry
+    );
+    instancedGeometry.maxInstancedCount = instanceCount;
+
+    let aOriginFloat32 = new Float32Array(aOrigin);
+    instancedGeometry.addAttribute(
+      'aOrigin',
+      new THREE.InstancedBufferAttribute(aOriginFloat32, 4, false)
+    );
+
+    const vertexShader = `
+    attribute vec4 aOrigin;
+    uniform float uTime;
+    uniform float uTheme;
+
+    varying vec3 vColor;
+
+    vec3 rainbowPalette(float index, float bitcrush) {
+      vec3 clr = vec3(0,0,0);
+      index = mod(index, 96.0);
+
+      if (index <= 15.0) {
+        clr.x = (16.0-index)/16.0;
+        clr.y = 1.0;
+        clr.z = 0.0;
+      }
+      else if (index <= 32.0) {
+        clr.x = 0.0;
+        clr.y = 1.0;
+        clr.z = (index-16.0)/16.0;
+      }
+
+      else if (index <= 48.0) {
+        clr.x = 0.0;
+        clr.y = (16.0-(index-32.0))/16.0;
+        clr.z = 1.0;
+      }
+      else if (index <= 64.0) {
+        clr.x = (index-48.0)/16.0;
+        clr.y = 0.0;
+        clr.z = 1.0;
+      }
+
+      else if (index <= 80.0) {
+        clr.x = 1.0;
+        clr.y = 0.0;
+        clr.z = (16.0-(index-64.0))/16.0;
+      }
+      else if (index < 96.0) {
+        clr.x = 1.0;
+        clr.y = (index-80.0)/16.0;
+        clr.z = 0.0;
+      }
+
+      if (bitcrush > 0.0) {
+        clr.x = floor(clr.x * bitcrush + 0.5) / bitcrush;
+        clr.y = floor(clr.y * bitcrush + 0.5) / bitcrush;
+        clr.z = floor(clr.z * bitcrush + 0.5) / bitcrush;
+      }
+
+      return clr;
+    }
+
+    void main(){
+      vec3 transformed = position.xyz;
+
+      transformed.x += aOrigin.x;
+      transformed.y += aOrigin.y;
+      transformed.z += mod(aOrigin.w * uTime, 1000.0) - 500.0;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.);
+
+      if (uTheme == 0.0) {
+        vColor = rainbowPalette(aOrigin.z + uTime /2.0, 2.0);
+      }
+      else if (uTheme == 1.0) {
+        vColor = rainbowPalette(aOrigin.z/12.0 + uTime /2.0, 0.0);
+      }
+      else if (uTheme == 2.0) {
+        vColor = rainbowPalette(aOrigin.w * uTime, 2.0);
+      }
+      else if (uTheme == 3.0) {
+        vColor = rainbowPalette(aOrigin.z/12.0 + uTime /16.0, 0.0);
+      }
+      else {
+        vColor = rainbowPalette((transformed.z+500.0)/10.0 + uTime/16.0, 2.0);
+      }
+    }
+    `;
+
+    const fragmentShader = `
+    varying vec3 vColor;
+
+    void main(){
+      vec3 color = vColor;
+      gl_FragColor = vec4(color, 1.);
+    }`;
+    let uniforms = {
+      uTime: new THREE.Uniform(0),
+      uTheme: new THREE.Uniform(0)
+    };
+    let material = new THREE.ShaderMaterial({
+      fragmentShader: fragmentShader,
+      vertexShader: vertexShader,
+      uniforms
+    });
+
+    // let material = new THREE.ShaderMaterial();
+    let mesh = new THREE.Mesh(instancedGeometry, material);
+
+    spaceMesh.object3D.add(mesh);
+
+    let gap = 1 / Math.pow(2, 60);
+    setInterval(() => {
+      gap = Math.min(gap * 2, 1 / 2);
+      uniforms.uTime.value += gap;
+    }, 16);
+
+    // CONTROLS /////////////////////////////////////////////////
+
+    // Controller listener
+    const controller = document.getElementById('controller');
+    const cameraChange = () => {
+      if (pov.object3D.position.x) {
+        pov.setAttribute('position', '0 0 0');
+        pov.setAttribute('rotation', '0 0 0');
+      } else {
+        pov.setAttribute('position', '-400 400 400');
+        pov.setAttribute('rotation', '-45 -45 0');
+      }
+    };
+    const themeChange = () => {
+      uniforms.uTheme.value = (uniforms.uTheme.value + 1) % 5;
+    };
+    controller.addEventListener('triggerdown', themeChange);
+    controller.addEventListener('gripdown', cameraChange);
+    window.addEventListener('keydown', e => {
+      if (e.key === 'q') {
+        themeChange();
+      } else if (e.key === 'w') {
+        cameraChange();
+      }
+    });
+
+    //// DECOR ////////////////////////////////////////////////////
+
+    function Grid(width, divisions) {
+      this.geometry = this.geometry || new THREE.BufferGeometry();
+      this.positions =
+        this.positions || new Float32Array((divisions + 1) * 2 * 2 * 3);
+      var positions = this.positions;
+      var bIndex = 0;
+      const mid = divisions / 2;
+      const z = 0;
+      const divWidth = width / divisions;
+
+      for (let x = 0; x <= divisions; x++) {
+        positions.set(
+          [
+            (x - mid) * divWidth,
+            -mid * divWidth,
+            z,
+            (x - mid) * divWidth,
+            mid * divWidth,
+            z
+          ],
+          bIndex
+        );
+        bIndex += 6;
+      }
+
+      for (let y = 0; y <= divisions; y++) {
+        positions.set(
+          [
+            -mid * divWidth,
+            (y - mid) * divWidth,
+            z,
+            mid * divWidth,
+            (y - mid) * divWidth,
+            z
+          ],
+          bIndex
+        );
+        bIndex += 6;
+      }
+
+      // Indexes
+      var indexes = new Uint16Array(bIndex / 3);
+      indexes.forEach((_, i) => (indexes[i] = i));
+
+      this.geometry.addAttribute(
+        'position',
+        new THREE.BufferAttribute(this.positions, 3)
+      );
+      this.geometry.setIndex(new THREE.BufferAttribute(indexes, 1));
+
+      // Material
+      this.gMaterial = this.gMaterial || new THREE.LineBasicMaterial();
+      this.gMaterial.color = new THREE.Color(miniHex('#fff'));
+
+      this.grid = new THREE.LineSegments(this.geometry, this.gMaterial);
+    }
+
+    const gridWidth = mWidth * 1.5;
+    const baseGrid = new Grid(gridWidth, 6);
+
+    const gridTop = new THREE.LineSegments(
+      baseGrid.geometry,
+      baseGrid.gMaterial
+    );
+    gridTop.position.y = gridWidth / 2;
+    gridTop.rotation.x = Math.PI / 2;
+    decor.object3D.add(gridTop);
+
+    const gridBottom = new THREE.LineSegments(
+      baseGrid.geometry,
+      baseGrid.gMaterial
+    );
+    gridBottom.position.y = -gridWidth / 2;
+    gridBottom.rotation.x = -Math.PI / 2;
+    decor.object3D.add(gridBottom);
+
+    const gridRight = new THREE.LineSegments(
+      baseGrid.geometry,
+      baseGrid.gMaterial
+    );
+    gridRight.position.x = gridWidth / 2;
+    gridRight.rotation.y = -Math.PI / 2;
+    decor.object3D.add(gridRight);
+
+    const gridLeft = new THREE.LineSegments(
+      baseGrid.geometry,
+      baseGrid.gMaterial
+    );
+    gridLeft.position.x = -gridWidth / 2;
+    gridLeft.rotation.y = -Math.PI / 2;
+    decor.object3D.add(gridLeft);
+  </script>
+</html>
