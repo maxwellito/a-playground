@@ -18,6 +18,11 @@
             oculus-touch-controls="hand: left"
             visible="false"
           ></a-entity>
+          <a-entity
+            id="controller-go"
+            oculus-go-controls
+            visible="false"
+          ></a-entity>
         </a-entity>
       </a-entity>
     </a-scene>
@@ -170,12 +175,14 @@
     setInterval(() => {
       gap = Math.min(gap * 2, 1 / 2);
       uniforms.uTime.value += gap;
+      // spaceMesh.object3D.rotation.z += 0.01;
     }, 16);
 
     // CONTROLS /////////////////////////////////////////////////
 
     // Controller listener
     const controller = document.getElementById('controller');
+    const controllerGo = document.getElementById('controller-go');
     const cameraChange = () => {
       if (pov.object3D.position.x) {
         pov.setAttribute('position', '0 0 0');
@@ -190,6 +197,8 @@
     };
     controller.addEventListener('triggerdown', themeChange);
     controller.addEventListener('gripdown', cameraChange);
+    controllerGo.addEventListener('triggerdown', themeChange);
+    controllerGo.addEventListener('trackpaddown', cameraChange);
     window.addEventListener('keydown', e => {
       if (e.key === 'q') {
         themeChange();
