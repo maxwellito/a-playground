@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>A-Lab</title>
+    <meta name="description" content="Hello, WebVR! • A-Frame" />
+    <script src="lib/aframe.min.js"></script>
+    <script src="services/pulse.component.js"></script>
+    <script src="services/autorotate.component.js"></script>
+
+    <script src="services/boxed.component.js"></script>
+    <script src="services/fall.component.js"></script>
+    <script src="services/skeletonbox.component.js"></script>
+    <script src="services/brokenpiece.component.js"></script>
+
+    <script src="services/windows/popup.component.js"></script>
+    <script>
+      var rotation;
+
+      AFRAME.registerComponent('rotation-reader', {
+        /**
+         * We use IIFE (immediately-invoked function expression) to only allocate one
+         * vector or euler and not re-create on every tick to save memory.
+         */
+        tick: function() {
+          rotation = this.el.object3D.rotation; //getWorldPosition(position);
+          // this.el.object3D.getWorldQuaternion(quaternion);
+
+          // position and rotation now contain vector and quaternion in world space.
+        }
+      });
+
+      setInterval(() => {
+        if (!rotation) return;
+        // fetch(`/api/lg/${quaternion.x}/${quaternion.y}/${quaternion.z}`);
+        // console.log(position, quaternion);
+        let debugTextEl = document.getElementById('debugText');
+        console.log(`${rotation.x} ${rotation.y} ${rotation.z}`);
+        debugTextEl.setAttribute(
+          'value',
+          `${rotation.x} ${rotation.y} ${rotation.z}`
+        );
+      }, 1000);
+    </script>
+  </head>
+  <body>
+    <a-scene background="color: #000">
+      <!-- <a-entity
+        oculus-touch-controls
+        laser-controls="hand: right"
+        line="color: #d556c7;"
+      ></a-entity>
+      <a-entity
+        oculus-touch-controls
+        laser-controls="hand: left"
+        line="color: #6be6fa;"
+        raycaster="objects: .clickable"
+      ></a-entity>
+
+      <a-dodecahedron
+        class="clickable"
+        color="#f6c408"
+        radius="1"
+        position="0 1.5 -4"
+        autorotate
+      ></a-dodecahedron>
+
+      <a-circle
+        color="#fff"
+        radius="2"
+        segments="128"
+        rotation="270 0 0"
+        position="0 0 -4"
+        opacity=".5"
+        pulse="height: .2; speed: 1; offset: 0;"
+      ></a-circle>
+
+      <a-circle
+        color="#fff"
+        radius="3"
+        segments="128"
+        rotation="270 0 0"
+        position="0 -.1 -4"
+        opacity=".25"
+        pulse="height: .2; speed: 1; offset: .1;"
+      ></a-circle>
+
+      <a-circle
+        color="#fff"
+        radius="4"
+        segments="128"
+        rotation="270 0 0"
+        position="0 -.2 -4"
+        opacity=".125"
+        pulse="height: .2; speed: 1; offset: .2;"
+      ></a-circle> -->
+
+      <a-entity popup position="-2 2 -6"></a-entity>
+      <a-camera rotation-reader></a-camera>
+
+      <a-text
+        id="debugText"
+        value=""
+        position="-0.2 -0.5 -1"
+        color="red"
+        width="5"
+        anchor="left"
+      ></a-text>
+    </a-scene>
+  </body>
+</html>

@@ -2,10 +2,9 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Infinite Mesh</title>
+    <title>Hello, WebVR! • A-Frame</title>
     <meta name="description" content="Hello, WebVR! • A-Frame" />
     <script src="https://aframe.io/releases/1.0.2/aframe.min.js"></script>
-    <script src="services/color.js"></script>
     <script>
       AFRAME.registerPrimitive('a-ocean', {
         // Attaches the `ocean` component by default.
@@ -24,17 +23,6 @@
           opacity: 'ocean.opacity'
         }
       });
-
-      AFRAME.registerComponent('x-button-listener', {
-        init: function() {
-          var el = this.el;
-          el.addEventListener('xbuttondown', function(evt) {
-            isColorful = !isColorful;
-          });
-        }
-      });
-      let isColorful;
-      // setInterval(() => (isColorful = !isColorful), 20000);
 
       AFRAME.registerComponent('foo', {
         schema: {
@@ -60,23 +48,13 @@
 
         tick: function(time, timeDelta) {
           // Do something on every scene tick or frame.
-          const pos = this.el.getAttribute('position');
-          const prevZ = Math.floor(pos.z);
-          pos.z += 1 / 16;
-          pos.y = Math.cos(pos.z / 4) * sinRatio + 1;
-          if (this.lastMesh) {
-            this.lastMesh.object3D.children.forEach(ch => {
-              const { opacity } = ch.material;
-              ch.material.opacity = Math.max(pos.z % 1, opacity);
-            });
+          const rot = this.el.getAttribute('rotation');
+          rot.y += 1;
+          if (rot.y >= 360) {
+            rot.y = 0;
+            switchColor();
           }
-          if (prevZ !== Math.floor(pos.z)) {
-            this.lastMesh = makeLine(0);
-            meshWrap.appendChild(this.lastMesh);
-            meshWrap.removeChild(meshWrap.firstElementChild);
-            // meshWrap.childNodes[0].remove();
-          }
-          this.el.setAttribute('postiion', pos);
+          this.el.setAttribute('rotation', rot);
         }
       });
 
@@ -103,65 +81,45 @@
     </script>
   </head>
   <body>
-    <a-scene background="color: #000">
-      <a-entity></a-entity>
-      <a-entity oculus-touch-controls x-button-listener></a-entity>
-      <a-entity
-        hand-controls
-        laser-controls="hand: right"
-        raycaster="far: 2"
-      ></a-entity>
-    </a-scene>
+    <a-scene background="color: #000"></a-scene>
   </body>
 
   <script>
     const scene = document.querySelector('a-scene');
 
-    const c = rainbowPalette();
-    const sinRatio = 1;
-
-    let previousLine;
-    let zOffset = 0;
     const mapLength = 10; // In squares
     const mapIndexes = [];
     for (let i = 0; i <= mapLength; i++) {
       mapIndexes.push(i);
     }
 
-    function makeLine(opacity) {
-      let lineIndex = 0;
-      const mesh = document.createElement('a-entity');
-      console.log(Math.sin(zOffset / 100));
-      const line = mapIndexes.map(
-        (_, i) =>
-          Math.abs((i - mapLength / 2) / (mapLength / 4)) *
-            Math.random() *
-            Math.sin(zOffset / 100) *
-            (location.hash ? 0 : 1) +
-          Math.sin(zOffset / 4) * sinRatio
-      );
-      const z = 0;
+    const mesh = document.createElement('a-entity');
+    const yDots = mapIndexes.map(() => mapIndexes.map(() => Math.random()));
+    let previousLine;
+    let lineIndex = 0;
 
-      const color = c[zOffset % c.length];
-      const meshColor = isColorful ? color : '#000';
-      const sceneColor = isColorful ? '#000' : color;
+    const lines = new Map();
+    function setLine(attr, data) {
+      lines.set(attr, data);
+      mesh.setAttribute(attr, data);
+    }
 
+    yDots.forEach((line, z) => {
       if (previousLine) {
         previousLine.forEach((_, x) => {
-          mesh.setAttribute(`line__${++lineIndex}`, {
-            start: {
-              x,
-              y: previousLine[x],
-              z: z + 1
-            },
-            end: {
-              x,
-              y: line[x],
-              z
-            },
-            color: meshColor,
-            opacity
-          });
+          setLine(
+            // console.log(
+            `line__${++lineIndex}`,
+            {
+              start: {
+                x,
+                y: previousLine[x],
+                z: z - 1
+              },
+              end: { x, y: line[x], z },
+              color: 'red'
+            }
+          );
         });
       }
       previousLine = line;
@@ -172,37 +130,32 @@
           previousY = y;
           return;
         }
-        mesh.setAttribute(
+        setLine(
           // console.log(
           ++lineIndex === 1 ? 'line' : `line__${lineIndex}`,
           {
             start: { x: x - 1, y: previousY, z },
             end: { x, y, z },
-            color: meshColor,
-            opacity
+            color: 'red'
           }
         );
         previousY = y;
       });
+    });
 
-      mesh.setAttribute('position', {
-        x: -(mapLength / 2),
-        y: 0,
-        z: -(mapLength / 2) - zOffset
-      });
-      zOffset++;
+    console.log(mesh);
 
-      scene.setAttribute('background', { color: sceneColor });
-
-      return mesh;
-    }
+    mesh.setAttribute('position', {
+      x: -(mapLength / 2),
+      y: 0,
+      z: -(mapLength / 2)
+    });
+    mesh.setAttribute('material', { color: 'yellow' });
 
     const meshWrap = document.createElement('a-entity');
-    meshWrap.setAttribute('position', { x: 0, y: 0, z: +(mapLength / 2) });
+    meshWrap.appendChild(mesh);
+    meshWrap.setAttribute('position', { x: 0, y: 0, z: -(mapLength / 2) });
     meshWrap.setAttribute('foo', '');
-    for (let i = 0; i < 20; i++) {
-      meshWrap.appendChild(makeLine(1));
-    }
 
     scene.appendChild(meshWrap);
   </script>

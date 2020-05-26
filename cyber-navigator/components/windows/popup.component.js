@@ -20,110 +20,152 @@ AFRAME.registerComponent('popup', {
       this.addState('destroyed');
     });
 
-    let bb = document.createElement('a-box');
-    bb.setAttribute('width', POPUP.width);
-    bb.setAttribute('height', POPUP.height);
-    bb.setAttribute('depth', POPUP.depth);
-    bb.setAttribute('color', '#00f');
-    bb.setAttribute('position', {
-      x: POPUP.width / 2,
-      y: -POPUP.height / 2,
-      z: -POPUP.depth / 2
+    // Cube base
+    var geometry = new THREE.BoxGeometry(
+      POPUP.width,
+      POPUP.height,
+      POPUP.depth
+    );
+    var material = new THREE.MeshBasicMaterial({
+      color: 0x11aaff,
+      transparent: true
     });
-    this.el.appendChild(bb);
+    var cube = new THREE.Mesh(geometry, material);
+    cube.position.set(POPUP.width / 2, -POPUP.height / 2, -POPUP.depth / 2);
+    cube.visible = false;
+    this.solidCube = cube;
+    this.el.object3D.add(cube);
 
     // Build the skeleton
-    let skeleton = document.createElement('a-entity');
-    skeleton.setAttribute('skeletonbox', {
-      width: POPUP.width,
-      height: POPUP.height,
-      depth: POPUP.depth,
-      color: this.data.color
-    });
-    skeleton.setAttribute('position', {
-      x: POPUP.width / 2,
-      y: -POPUP.height / 2,
-      z: -POPUP.depth / 2
-    });
-    this.skeleton = skeleton;
-    this.el.appendChild(skeleton);
+    const skel = cubeSkeleton(1, 1, 1, '#1af');
+    skel.lines.scale.set(POPUP.width, POPUP.height, POPUP.depth);
+    skel.lines.position.set(
+      POPUP.width / 2,
+      -POPUP.height / 2,
+      -POPUP.depth / 2
+    );
+    this.skeleton = skel.lines;
+    this.el.object3D.add(skel.lines);
 
-    // Popup details
-    let boxDetails = document.createElement('a-entity');
-    buildCubeedddd(boxDetails, this.data.color, [
-      [
-        [0, -POPUP.topbarHeight, 0],
-        [POPUP.width, -POPUP.topbarHeight, 0]
-      ],
-      [
-        [POPUP.width - POPUP.topbarHeight, 0, 0],
-        [POPUP.width - POPUP.topbarHeight, -POPUP.topbarHeight, 0]
-      ]
-    ]);
-    this.boxDetails = boxDetails;
-    this.el.appendChild(boxDetails);
-
-    // Add exploded elements
+    // Sub boxes
     let counter = 0;
     this.brokenpieces = [];
     for (let y = POPUP.height - 1; y >= 0; y--) {
       for (let x = POPUP.width - 1; x >= 0; x--) {
-        let boxFill = document.createElement('a-entity');
-        boxFill.setAttribute('brokenpiece', {
-          width: 1,
-          height: 1,
-          depth: POPUP.depth,
-          color: this.data.color
-        });
-        boxFill.setAttribute('visible', false);
-        boxFill.setAttribute('position', {
-          x: x + 0.5,
-          y: -y - 0.5,
-          z: -POPUP.depth / 2
-        });
-        this.el.appendChild(boxFill);
-        this.brokenpieces.push(boxFill);
+        const mesh = skel.cloneMesh();
+        mesh.scale.set(1, 1, POPUP.depth);
+        mesh.position.set(x + 0.5, -y - 0.5, -POPUP.depth / 2);
+        mesh.visible = false;
+        this.el.object3D.add(mesh);
+        this.brokenpieces.push(mesh);
         counter++;
       }
     }
-    this.el.addEventListener('ended', () => {
-      counter--;
-      if (counter === 0) {
-        console.log('CLEAN THIS SHIT UP');
-        this.el.parentEl.removeChild(this.el);
-      }
-    });
+    // this.el.addEventListener('ended', () => {
+    //   counter--;
+    //   if (counter === 0) {
+    //     console.log('CLEAN THIS SHIT UP');
+    //     this.el.parentEl.removeChild(this.el);
+    //   }
+    // });
+
+    // this.brokenpieces.forEach((bp, i) => {
+    //   bp.visible = true;
+    //   // bp.setAttribute('brokenpiece', { play: true });
+
+    //   fall(bp, {
+    //     delay: Math.floor(Math.random() * 8 + i) + 5,
+    //     duration: 60
+    //   });
+    // });
+    // // this.boxDetails.setAttribute('visible', false);
+
+    // this.skeleton.visible = false;
+
+    setTimeout(() => this.crush(), 1000);
   },
 
   crush: function() {
-    this.brokenpieces.forEach((bp, i) => {
-      bp.setAttribute('visible', true);
-      bp.setAttribute('brokenpiece', { play: true });
-      bp.setAttribute('fall', {
-        delay: (Math.random() * 10 + i) * 20 + 500
+    // 1. Show the flash
+    this.solidCube.visible = true;
+    this.skeleton.visible = false;
+    this.brokenpieces.forEach(mesh => (mesh.visible = true));
+    fade(this.solidCube.material).then(() => {
+      this.solidCube.visible = false;
+      // 2. Make pieces fall
+      this.brokenpieces.forEach((bp, i) => {
+        fall(bp, {
+          delay: Math.floor(Math.random() * 8 + i) + 5,
+          duration: 60
+        });
       });
+      fade(this.skeleton.material, 1 / 64);
     });
-    this.boxDetails.setAttribute('visible', false);
 
-    this.skeleton.setAttribute('visible', false);
+    // this.brokenpieces.forEach((bp, i) => {
+    //   bp.visible = true;
+    //   fall(bp, {
+    //     delay: Math.floor(Math.random() * 8 + i) + 5,
+    //     duration: 60
+    //   });
+    // });
+    // // this.boxDetails.setAttribute('visible', false);
+
+    // this.skeleton.visible = false;
   }
 });
 
-function buildCubeedddd(entity, color, lines = []) {
-  lines.forEach(([aPos, bPos], index) => {
-    entity.setAttribute(`line${index ? '__' + (index + 1) : ''}`, {
-      start: {
-        x: aPos[0],
-        y: aPos[1],
-        z: aPos[2]
-      },
-      end: {
-        x: bPos[0],
-        y: bPos[1],
-        z: bPos[2]
-      },
-      color,
-      opacity: 1
-    });
-  });
+function fade(material, options) {
+  let callback;
+
+  const x = function() {
+    material.opacity -= options || 1 / 32;
+    console.log(material.opacity);
+    if (material.opacity > 0) {
+      requestAnimationFrame(x);
+    } else {
+      callback();
+    }
+  };
+  x();
+
+  return new Promise(res => (callback = res));
+}
+
+function fall(mesh, options) {
+  let ratio = 0;
+  // let callback;
+  const rotX = Math.random() - 0.5;
+  const rotY = Math.random() - 0.5;
+  const rotZ = Math.random() - 0.5;
+
+  const x = () => {
+    console.log(options);
+    if (options.delay > 0) {
+      options.delay--;
+      requestAnimationFrame(x);
+      return;
+    }
+    if (options.duration <= 0) {
+      return;
+    }
+    options.duration--;
+    ratio = Math.min(1, ratio + 0.03125);
+    const currentRatio = Math.pow(ratio, 2);
+    mesh.position.set(
+      mesh.position.x,
+      mesh.position.y - currentRatio / 4,
+      mesh.position.z
+    );
+    mesh.rotation.set(
+      rotX * currentRatio,
+      rotY * currentRatio,
+      rotZ * currentRatio
+    );
+
+    requestAnimationFrame(x);
+  };
+  x();
+
+  // return new Promise((res) => callback = res);
 }

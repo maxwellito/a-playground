@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ColorVortex</title>
+    <script src="../lib/aframe.min.js"></script>
+    <script src="../services/color.js"></script>
+  </head>
+  <body>
+    <a-scene background="color: #000">
+      <a-entity id="space"></a-entity>
+      <a-entity id="decor"></a-entity>
+      <a-entity id="pov">
+        <a-entity id="camerawrap">
+          <a-camera far="10000" near=".5" position="0 0 0"></a-camera>
+          <a-entity
+            id="controller"
+            oculus-touch-controls="hand: left"
+            visible="false"
+          ></a-entity>
+          <a-entity
+            id="controller-go"
+            oculus-go-controls
+            visible="false"
+          ></a-entity>
+        </a-entity>
+      </a-entity>
+    </a-scene>
+  </body>
+
+  <script type="x-shader/x-fragment" id="fragmentShader">
+    precision highp float;
+
+    uniform float uTime;
+    uniform vec3 uColor;
+    uniform float uBrightness;
+    uniform float uRefreshRate;
+
+    varying vec2 vUv;
+
+    void main () {
+
+      float rrProgress = mod(vUv.y*-75.0 + -uTime*0.5, uRefreshRate)/uRefreshRate;
+      float opacity = 1.0 - uBrightness + (rrProgress)* uBrightness;
+
+      if (mod(vUv.y - uTime/15000.0, 0.01) > 0.005) {
+        opacity *= 0.25;
+      }
+      gl_FragColor = vec4(uColor.r, uColor.g, uColor.b, opacity);
+    }
+  </script>
+
+  <script type="x-shader/x-vertex" id="vertexShader">
+    // attributes of our mesh
+    attribute vec3 position;
+    attribute vec2 uv;
+
+    // built-in uniforms from ThreeJS camera and Object3D
+    uniform mat4 projectionMatrix;
+    uniform mat4 modelViewMatrix;
+    uniform mat3 normalMatrix;
+
+    // custom uniforms to build up our tubes
+    uniform float uTime;
+    uniform vec2 uMousePosition;
+
+    // pass a few things along to the vertex shader
+    varying vec2 vUv;
+
+    void main() {
+    	vUv = uv;
+      vec4 pos = vec4(position, 1.0);
+      vec3 transformed = position.xyz;
+    	gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.);
+    }
+  </script>
+
+  <script>
+    const spaceMesh = document.querySelector('#space');
+    const decor = document.querySelector('#decor');
+    const pov = document.querySelector('#pov');
+
+    var material = new THREE.RawShaderMaterial({
+      vertexShader: document.getElementById('vertexShader').textContent,
+      fragmentShader: document.getElementById('fragmentShader').textContent,
+
+      uniforms: {
+        uTime: { type: 'f', value: 0 },
+        uColor: { type: 'v3', value: new THREE.Vector3(0.0625, 0.625, 1.0) },
+        uBrightness: { type: 'f', value: 0.2 },
+        uRefreshRate: { type: 'f', value: 70 },
+      },
+      transparent: true,
+    });
+    material.side = THREE.DoubleSide;
+
+    var planeGeometry = new THREE.PlaneGeometry(2, 2, 1, 1);
+    var plane = new THREE.Mesh(planeGeometry, material);
+    plane.position.z = -1.5;
+    spaceMesh.object3D.add(plane);
+
+    setInterval(() => {
+      material.uniforms.uTime.value += 1;
+    }, 16);
+  </script>
+</html>

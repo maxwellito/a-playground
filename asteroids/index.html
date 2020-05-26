@@ -5,8 +5,7 @@
     <title>Asteroids</title>
     <meta name="description" content="Hello, WebVR! • A-Frame" />
     <script src="../lib/aframe.min.js"></script>
-    <script src="../services/color.js"></script>
-    <script src="../services/utils.js"></script>
+    <script src="./utils.js"></script>
 
     <script src="./controllers.js"></script>
     <script src="./mesh/asteroid.js"></script>
@@ -56,21 +55,16 @@
     pov.object3D.position.z = 50;
 
     // Build Space
-    const space = new Space(spaceMesh, 100, 100);
+    const space = new Space(spaceMesh.object3D, 100, 100);
     space.addAsteroids(200);
 
     // Update space
-    function updateAsteroids() {
-      space.tick(pov.object3D.position);
-      setTimeout(updateAsteroids, 16);
-    }
-    updateAsteroids();
+    space.tick(pov.object3D.position);
 
     // Controller listener
     const controller = document.getElementById('controller');
-    let startBullet = false;
     controller.addEventListener('triggerdown', () => {
-      startBullet = true;
+      space.triggerBullet(state.origin, state.direction, state.rotation);
     });
     controller.addEventListener('gripdown', () => {
       isTriggerOn = true;
@@ -78,80 +72,89 @@
     controller.addEventListener('gripup', () => {
       isTriggerOn = false;
     });
-    window.addEventListener('click', () => {
-      isTriggerOn = !isTriggerOn;
-      startBullet = true;
+    window.addEventListener('keydown', e => {
+      switch (e.key) {
+        case ' ':
+          space.triggerBullet(state.origin, state.direction, state.rotation);
+          break;
+
+        case 'Enter':
+          isTriggerOn = !isTriggerOn;
+          break;
+      }
     });
 
     const lights = document.querySelectorAll('[data-aframe-default-light]');
     const lightA = lights[0];
     const lightB = lights[1];
 
-    var raycaster = new THREE.Raycaster();
+    const state = {};
 
     function render(origin, direction, rotation) {
       direction.negate();
 
-      // update the picking ray with the camera and mouse position
-      raycaster.set(origin, direction);
+      state.origin = origin;
+      state.direction = direction.clone();
+      state.rotation = rotation;
 
-      // calculate objects intersecting the picking ray
-      var intersects = raycaster.intersectObjects(spaceMesh.object3D.children);
+      space.tick(pov.object3D.position);
 
-      for (var i = 0; i < intersects.length; i++) {
-        intersects[i].object.material = new THREE.MeshLambertMaterial({
-          color: 0xff0000
-        });
-      }
+      // // update the picking ray with the camera and mouse position
+      // raycaster.set(origin, direction);
 
-      scene.renderer.render(scene.object3D, camera.object3D.children[0]);
-      lol(origin, direction);
+      // // calculate objects intersecting the picking ray
+      // var intersects = raycaster.intersectObjects(spaceMesh.object3D.children);
 
-      if (startBullet) {
-        startBullet = false;
-        var v = direction.clone();
+      // for (var i = 0; i < intersects.length; i++) {
+      //   intersects[i].object.material = new THREE.MeshLambertMaterial({
+      //     color: 0xff0000
+      //   });
+      // }
 
-        v.normalize();
-        const xx = new BulletMesh();
-        xx.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-        scene.object3D.add(xx.mesh);
-        const xxx = new Bullet(xx.mesh, origin, v);
-        const xxxx = setInterval(() => {
-          xxx.tick();
-          if (xxx.distanceLeft < 0) {
-            clearInterval(xxxx);
-          }
-        }, 16);
-      }
+      // scene.renderer.render(scene.object3D, camera.object3D.children[0]);
+      // lol(origin, direction);
+
+      // if (startBullet) {
+      //   startBullet = false;
+      //   var v = direction.clone();
+
+      //   v.normalize();
+      //   const xx = new BulletMesh();
+      //   xx.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+      //   scene.object3D.add(xx.mesh);
+      //   const xxx = new Bullet(xx.mesh, origin, v);
+      //   const xxxx = setInterval(() => {
+      //     xxx.tick();
+      //     if (xxx.distanceLeft < 0) {
+      //       clearInterval(xxxx);
+      //     }
+      //   }, 16);
+      // }
     }
 
-    var lineray;
+    controller.object3D.rotation.set(0, 0.00001, 0);
 
-    function lol(pointA, direction) {
-      // Draw a line from pointA in the given direction at distance 100
-      // var pointA = new THREE.Vector3( 0, 0, 0 );
-      // var direction = new THREE.Vector3( 10, 0, 0 );
-      // direction.normalize();
+    // create an AudioListener and add it to the camera
+    var listener = new THREE.AudioListener();
+    camera.object3D.add(listener);
 
-      var distance = 100; // at what distance to determine pointB
+    const sounds = {};
 
-      var pointB = new THREE.Vector3();
-      pointB.addVectors(pointA, direction.multiplyScalar(distance));
+    [
+      ['bang', 'assets/sounds/bangLarge.wav'],
+      ['fire', 'assets/sounds/fire.wav']
+    ].forEach(([name, path]) => {
+      // create a global audio source
+      var sound = new THREE.Audio(listener);
 
-      var geometry = new THREE.Geometry();
-      geometry.vertices.push(pointA);
-      geometry.vertices.push(pointB);
-      if (!lineray) {
-        console.log('A');
-        var material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-        lineray = new THREE.Line(geometry, material);
-        scene.object3D.add(lineray);
-      } else {
-        console.log('B');
-        lineray.geometry = geometry;
-      }
-    }
-
-    controller.object3D.rotation.set(0, 0.1, 0);
+      // load a sound and set it as the Audio object's buffer
+      var audioLoader = new THREE.AudioLoader();
+      audioLoader.load(path, function(buffer) {
+        sound.setBuffer(buffer);
+        sound.setLoop(false);
+        sound.setVolume(1);
+        sounds[name] = sound;
+      });
+    });
   </script>
 </html>

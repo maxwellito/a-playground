@@ -21,8 +21,8 @@ class Space {
       const mesh = model.cloneMesh();
       const ast = new Asteroid(mesh, (i % 3) + 1);
       mesh.position.set(
-        (Math.random() - 0.5) * 2 * (this.size + this.gap),
-        (Math.random() - 0.5) * 2 * (this.size + this.gap),
+        0.001 * (Math.random() - 0.5) * 2 * (this.size + this.gap),
+        0.001 * (Math.random() - 0.5) * 2 * (this.size + this.gap),
         (Math.random() - 0.5) * 2 * (this.size + this.gap)
       );
 
@@ -44,20 +44,34 @@ class Space {
     // Update bullets
     for (let i = this.bulletsObjects.length - 1; i >= 0; i--) {
       const bullet = this.bulletsObjects[i];
-      bullet.tick();
-      if (bullet.distanceLeft < 0) {
+      const intersects = bullet.tick();
+      if (intersects.length) {
+        const intersect = intersects[0].object;
+        const asteroidsObject = this.asteroidsObjects.find(
+          x => x.mesh === intersect
+        );
+        asteroidsObject.scale /= 2;
+        asteroidsObject.direction = {
+          x: asteroidsObject.direction.y,
+          y: asteroidsObject.direction.z,
+          z: asteroidsObject.direction.x
+        };
+        sounds.bang.play();
+      }
+      if (bullet.distanceLeft < 0 || intersects.length) {
         this.bullets.remove(bullet.mesh);
         this.bulletsObjects.splice(i, 1);
       }
     }
   }
 
-  triggerBullet() {
-    v.normalize();
+  triggerBullet(origin, direction, rotation) {
+    sounds.fire.play();
+    direction.normalize();
     const bullet = new BulletMesh();
     bullet.mesh.rotation.set(rotation.x, rotation.y, rotation.z);
     this.bullets.add(bullet.mesh);
-    this.bulletsObjects.push(new Bullet(bullet.mesh, origin, v));
-    const bulletObject = new Bullet(xx.mesh, origin, v);
+    this.bulletsObjects.push(new Bullet(bullet.mesh, origin, direction));
+    const bulletObject = new Bullet(bullet.mesh, origin, direction);
   }
 }

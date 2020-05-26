@@ -21,7 +21,7 @@ AFRAME.registerComponent('floorline', {
     // Geometry
     this.geometry = this.geometry || new THREE.BufferGeometry();
     this.positions =
-      this.positions || new Float32Array(MAX_POINTS * (3 * 3) + 3 * 2);
+      this.positions || new Float32Array((MAX_POINTS - 1) * (3 * 3) + 3 * 2);
     var positions = this.positions;
     var bIndex = 0;
 
@@ -49,6 +49,7 @@ AFRAME.registerComponent('floorline', {
     if (previousLine) {
       this.geometry.setDrawRange(0, MAX_POINTS * (3 * 3) + 3 * 2);
     } else {
+      console.log(positions);
       this.geometry.setDrawRange(0, MAX_POINTS); // draw ALL THE points, only
     }
 
@@ -64,7 +65,3 @@ AFRAME.registerComponent('floorline', {
     }
   }
 });
-
-function miniHex(c) {
-  return parseInt(`${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`, 16);
-}

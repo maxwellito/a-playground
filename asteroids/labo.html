@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Asteroids</title>
+    <meta name="description" content="Hello, WebVR! • A-Frame" />
+    <script src="../lib/aframe.min.js"></script>
+    <script src="./utils.js"></script>
+  </head>
+  <body>
+    <a-scene background="color: #0fb">
+      <a-entity id="space" position="0 0 -8"></a-entity>
+      <a-entity id="pov" rotation="0.01 0.01 0.01">
+        <a-entity id="camerawrap">
+          <a-camera far="200" near=".5" position="0 0 0"></a-camera>
+        </a-entity>
+        <!-- <a-entity
+          id="controller"
+          oculus-touch-controls="hand: right"
+          rotation-reader
+        ></a-entity> -->
+      </a-entity>
+    </a-scene>
+  </body>
+
+  <script>
+    const spaceMesh = document.querySelector('#space');
+    const scene = document.querySelector('a-scene');
+    const pov = document.querySelector('#pov');
+    const debugText = document.querySelector('#debugText');
+    const camera = document.querySelector('[camera]');
+
+    function makeAsteroid() {
+      const r = val => val + (Math.random() - 0.5) * 0.6;
+      const geometry = new THREE.Geometry();
+      geometry.vertices.push(
+        new THREE.Vector3(-1, 1, -1),
+        new THREE.Vector3(r(0), r(1), r(-1)),
+        new THREE.Vector3(r(1), r(1), r(-1)),
+        new THREE.Vector3(r(-1), r(1), r(0)),
+        new THREE.Vector3(r(0), r(1), r(0)),
+        new THREE.Vector3(r(1), r(1), r(0)),
+        new THREE.Vector3(r(-1), r(1), r(1)),
+        new THREE.Vector3(r(0), r(1), r(1)),
+        new THREE.Vector3(r(1), r(1), r(1)),
+
+        new THREE.Vector3(r(-1), r(0), r(-1)),
+        new THREE.Vector3(r(0), r(0), r(-1)),
+        new THREE.Vector3(r(1), r(0), r(-1)),
+        new THREE.Vector3(r(-1), r(0), r(0)),
+        new THREE.Vector3(r(0), r(0), r(0)),
+        new THREE.Vector3(r(1), r(0), r(0)),
+        new THREE.Vector3(r(-1), r(0), r(1)),
+        new THREE.Vector3(r(0), r(0), r(1)),
+        new THREE.Vector3(r(1), r(0), r(1)),
+
+        new THREE.Vector3(r(-1), r(-1), r(-1)),
+        new THREE.Vector3(r(0), r(-1), r(-1)),
+        new THREE.Vector3(r(1), r(-1), r(-1)),
+        new THREE.Vector3(r(-1), r(-1), r(0)),
+        new THREE.Vector3(r(0), r(-1), r(0)),
+        new THREE.Vector3(r(1), r(-1), r(0)),
+        new THREE.Vector3(r(-1), r(-1), r(1)),
+        new THREE.Vector3(r(0), r(-1), r(1)),
+        new THREE.Vector3(r(1), r(-1), r(1))
+      );
+
+      geometry.faces.push(
+        // Top
+        new THREE.Face3(0, 3, 1),
+        new THREE.Face3(1, 3, 4),
+        new THREE.Face3(1, 4, 2),
+        new THREE.Face3(2, 4, 5),
+        new THREE.Face3(3, 6, 4),
+        new THREE.Face3(4, 6, 7),
+        new THREE.Face3(4, 7, 5),
+        new THREE.Face3(5, 7, 8),
+
+        // Bottom
+        new THREE.Face3(18, 19, 21),
+        new THREE.Face3(19, 22, 21),
+        new THREE.Face3(19, 20, 22),
+        new THREE.Face3(20, 23, 22),
+        new THREE.Face3(21, 22, 24),
+        new THREE.Face3(22, 25, 24),
+        new THREE.Face3(22, 23, 25),
+        new THREE.Face3(23, 26, 25),
+
+        // Back
+        new THREE.Face3(0, 1, 9),
+        new THREE.Face3(1, 10, 9),
+        new THREE.Face3(1, 2, 10),
+        new THREE.Face3(2, 11, 10),
+        new THREE.Face3(9, 10, 18),
+        new THREE.Face3(10, 19, 18),
+        new THREE.Face3(10, 11, 19),
+        new THREE.Face3(11, 20, 19),
+
+        // Front
+        new THREE.Face3(6, 15, 7),
+        new THREE.Face3(7, 15, 16),
+        new THREE.Face3(7, 16, 8),
+        new THREE.Face3(8, 16, 17),
+        new THREE.Face3(15, 24, 16),
+        new THREE.Face3(16, 24, 25),
+        new THREE.Face3(16, 25, 17),
+        new THREE.Face3(17, 25, 26),
+
+        // Left
+        new THREE.Face3(0, 9, 3),
+        new THREE.Face3(3, 9, 12),
+        new THREE.Face3(3, 12, 6),
+        new THREE.Face3(6, 12, 15),
+        new THREE.Face3(9, 18, 12),
+        new THREE.Face3(12, 18, 21),
+        new THREE.Face3(12, 21, 15),
+        new THREE.Face3(15, 21, 24),
+
+        // Right
+        new THREE.Face3(2, 5, 11),
+        new THREE.Face3(5, 14, 11),
+        new THREE.Face3(5, 8, 14),
+        new THREE.Face3(8, 17, 14),
+        new THREE.Face3(11, 14, 20),
+        new THREE.Face3(14, 23, 20),
+        new THREE.Face3(14, 17, 23),
+        new THREE.Face3(17, 26, 23)
+      );
+
+      geometry.computeFaceNormals();
+      const bg = new THREE.BufferGeometry();
+      bg.fromGeometry(geometry);
+      return bg;
+    }
+
+    let baseGeometry = makeAsteroid();
+    let instancedGeometry = new THREE.InstancedBufferGeometry().copy(
+      baseGeometry
+    );
+    let instanceCount = 3500;
+    instancedGeometry.maxInstancedCount = instanceCount;
+
+    // SHADE ////////////////////////////////////////
+    let aOrigin = [];
+    let aRotation = [];
+    let aDirection = [];
+    let colors = [new THREE.Color('#ff3030'), new THREE.Color('#121214')];
+    for (let i = 0; i < instanceCount; i++) {
+      const originX = (Math.random() - 0.5) * 200;
+      const originY = (Math.random() - 0.5) * 200;
+      const originZ = (Math.random() - 0.5) * 200;
+      const directionX = (Math.random() - 0.5) * 0.625;
+      const directionY = (Math.random() - 0.5) * 0.625;
+      const directionZ = (Math.random() - 0.5) * 0.625;
+      const rotX = Math.random() / 128;
+      const rotY = Math.random() / 128;
+      aOrigin.push(originX, originY, originZ);
+      aDirection.push(directionX, directionY, directionZ);
+      aRotation.push(rotX, rotY);
+    }
+    let aOriginFloat32 = new Float32Array(aOrigin);
+    instancedGeometry.addAttribute(
+      'aOrigin',
+      new THREE.InstancedBufferAttribute(aOriginFloat32, 3, false)
+    );
+    let aDirectionFloat32 = new Float32Array(aDirection);
+    instancedGeometry.addAttribute(
+      'aDirection',
+      new THREE.InstancedBufferAttribute(aDirectionFloat32, 3, false)
+    );
+    let aRotationFloat32 = new Float32Array(aRotation);
+    instancedGeometry.addAttribute(
+      'aRotation',
+      new THREE.InstancedBufferAttribute(aRotationFloat32, 2, false)
+    );
+
+    const vertexShader = `
+    attribute vec3 aOrigin;
+    attribute vec3 aDirection;
+    attribute vec2 aRotation;
+    uniform float uTime;
+    uniform float uScale;
+
+    // varying vec3 vColor;
+
+    float interval(float val) {
+      if (val > 100.0) {
+        return val - 200.0;
+      }
+      if (val < -100.0) {
+        return val + 200.0;
+      }
+      return val;
+    }
+
+    void main(){
+      vec3 transformed = position.xyz;
+      vec2 rotationed = radius.xy;
+
+      transformed.x += interval(aOrigin.x + aDirection.x * uTime);
+      transformed.y += interval(aOrigin.y + aDirection.y * uTime);
+      transformed.z += interval(aOrigin.z + aDirection.z * uTime);
+
+      // rotationed.x = aRotation.x * uTime;
+      // rotationed.y = aRotation.y * uTime;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.);
+      // gl_Rotation = rotationed
+    }
+    `;
+
+    const fragmentShader = `
+    void main(){
+      vec3 color;
+      color.x = 0.8;
+      color.y = 0.8;
+      color.z = 0.8;
+      gl_FragColor = vec4(color, 1.);
+    }`;
+    let uniforms = {
+      uTime: new THREE.Uniform(0),
+      uMouse: new THREE.Uniform(new THREE.Vector2(-1, -1)),
+      uHold: new THREE.Uniform(0),
+      uScale: new THREE.Uniform(1)
+    };
+    let material = new THREE.ShaderMaterial({
+      fragmentShader: fragmentShader,
+      vertexShader: vertexShader,
+      uniforms
+    });
+
+    // let material = new THREE.ShaderMaterial();
+    let mesh = new THREE.Mesh(instancedGeometry, material);
+
+    spaceMesh.object3D.add(mesh);
+
+    setInterval(() => {
+      uniforms.uTime.value += 0.125;
+    });
+  </script>
+</html>

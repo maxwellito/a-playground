@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Hello, WebVR! • A-Frame</title>
+    <meta name="description" content="Hello, WebVR! • A-Frame" />
+    <script src="https://aframe.io/releases/1.0.2/aframe.min.js"></script>
+    <script>
+      AFRAME.registerPrimitive('a-ocean', {
+        // Attaches the `ocean` component by default.
+        // Defaults the ocean to be parallel to the ground.
+        defaultComponents: {
+          ocean: {},
+          rotation: { x: -90, y: 0, z: 0 }
+        },
+
+        // Maps HTML attributes to the `ocean` component's properties.
+        mappings: {
+          width: 'ocean.width',
+          depth: 'ocean.depth',
+          density: 'ocean.density',
+          color: 'ocean.color',
+          opacity: 'ocean.opacity'
+        }
+      });
+
+      AFRAME.registerComponent('foo', {
+        schema: {
+          bar: { type: 'number' },
+          baz: { type: 'string' }
+        },
+
+        init: function() {
+          // Do something when component first attached.
+          const pos = this.el.getAttribute('position');
+          console.log('init', pos);
+        },
+
+        update: function() {
+          // Do something when component's data is updated.
+          console.log('update');
+        },
+
+        remove: function() {
+          // Do something the component or its entity is detached.
+          console.log('remove');
+        },
+
+        tick: function(time, timeDelta) {
+          // Do something on every scene tick or frame.
+          const pos = this.el.getAttribute('position');
+          pos.z = pos.z < 10 ? pos.z + 0.06125 : -10;
+          pos.x = Math.cos(time / 1000 + pos.z) * 0.3;
+          pos.y = 1.5 + Math.sin(time / 1000 + pos.z) * 0.3;
+          this.el.setAttribute('position', pos);
+        }
+      });
+
+      AFRAME.registerComponent('log', {
+        schema: {
+          event: { type: 'string', default: '' },
+          message: { type: 'string', default: 'Hello, World!' }
+        },
+
+        init: function() {
+          var self = this;
+          this.eventHandlerFn = function() {
+            console.log(self.data.message);
+          };
+        },
+
+        update: function(oldData) {
+          var data = this.data;
+          var el = this.el;
+
+          // `event` updated. Remove the previous event listener if it exists.
+          if (oldData.event && data.event !== oldData.event) {
+            console.log('Event removed');
+            el.removeEventListener(oldData.event, this.eventHandlerFn);
+          }
+
+          if (data.event) {
+            console.log('Event added');
+            el.addEventListener(data.event, this.eventHandlerFn);
+          } else {
+            console.log(data.message);
+          }
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene
+      background="color: #000"
+      log="event: anEvent; message: Hello, Metaverse!"
+    >
+      <a-ring
+        color="#0ff"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 -5"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#f0f"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 -4"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#ff0"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 -3"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#0ff"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 -2"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#f0f"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 -1"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#ff0"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 0"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#0ff"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 1"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#f0f"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 2"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#ff0"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 3"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#0ff"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 4"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#f0f"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 5"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#ff0"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 6"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#0ff"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 7"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#f0f"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 8"
+        foo
+      ></a-ring>
+
+      <a-ring
+        color="#ff0"
+        radius-inner=".4"
+        radius-outer="5"
+        position="0 1.5 9"
+        foo
+      ></a-ring>
+
+      <!-- <a-box
+        position="-1 0.5 -3"
+        rotation="0 45 0"
+        color="#4CC3D9"
+        shadow
+        foo
+      ></a-box>
+      <a-sphere
+        position="0 1.25 -5"
+        radius="1.25"
+        color="#EF2D5E"
+        shadow
+      ></a-sphere>
+      <a-cylinder
+        position="1 0.75 -3"
+        radius="0.5"
+        height="1.5"
+        color="#FFC65D"
+        shadow
+      ></a-cylinder>
+      <a-plane
+        position="0 0 -4"
+        rotation="-90 0 0"
+        width="4"
+        height="4"
+        color="#7BC8A4"
+        shadow
+      ></a-plane> -->
+      <!-- <a-entity foo="bar: 5; baz: bazValue"></a-entity> -->
+      <!-- <a-ocean color="aqua" depth="100" width="100"></a-ocean> -->
+    </a-scene>
+  </body>
+</html>

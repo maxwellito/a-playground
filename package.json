@@ -4,7 +4,7 @@
   "description": "Personal A-Frame playground",
   "main": "aframe.min.js",
   "scripts": {
-    "start": "http-server -S -C ssh/cert.pem -K ssh/key.pem",
+    "start": "http-server -c-1 -S -C ssh/cert.pem -K ssh/key.pem",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {

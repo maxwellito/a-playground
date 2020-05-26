@@ -7,6 +7,8 @@
     <script src="../lib/aframe.min.js"></script>
     <script src="../services/color.js"></script>
     <script src="../services/utils.js"></script>
+
+    <script src="skeleton.js"></script>
     <script src="components/windows/popup.component.js?998"></script>
 
     <script src="components/brokenpiece.component.js"></script>
@@ -58,6 +60,7 @@
         init: function() {
           // Do something when component first attached.
           const pos = this.el.getAttribute('position');
+          this.frontMeshIndex = 0;
         },
 
         tick: function(time, timeDelta) {
@@ -80,11 +83,14 @@
           }
 
           if (prevZ !== Math.floor(pos.z)) {
-            var meshToMove = meshWrap.firstElementChild;
+            var meshToMove =
+              meshWrap.children[
+                this.frontMeshIndex++ % meshWrap.children.length
+              ];
 
-            meshWrap.removeChild(meshToMove);
+            // meshWrap.removeChild(meshToMove);
             this.lastMesh = makeLine(meshToMove);
-            meshWrap.appendChild(this.lastMesh);
+            // meshWrap.appendChild(this.lastMesh);
           }
           this.el.setAttribute('postiion', pos);
         }
@@ -149,7 +155,7 @@
       });
 
       let wall = parcel.querySelector('[wall]');
-      if (zOffset === 14 || zOffset === 25 || wall) {
+      if (zOffset === 14 || /* zOffset === 25 || */ wall) {
         if (!wall) {
           console.log('create wall');
           wall = document.createElement('a-entity');
@@ -167,6 +173,17 @@
           yStart,
           yEnd
         });
+      }
+
+      if (zOffset === 25) {
+        wall = document.createElement('a-entity');
+        wall.setAttribute('popup', {});
+        wall.setAttribute('position', {
+          x: 3.5 + Math.random() * 6,
+          y: Math.max(...line) + 2.5 + Math.random() * 2,
+          z: 0
+        });
+        parcel.appendChild(wall);
       }
 
       previousLine = line;

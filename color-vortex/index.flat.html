@@ -5,37 +5,65 @@
     <title>ColorVortex</title>
     <script src="../lib/aframe.min.js"></script>
     <script src="../services/color.js"></script>
+    <style>
+      body {
+        overflow: hidden;
+        margin: 0;
+        background: black;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      .world {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
   </head>
   <body>
-    <a-scene background="color: #000">
-      <a-entity id="space"></a-entity>
-      <a-entity id="decor"></a-entity>
-      <a-entity id="pov">
-        <a-entity id="camerawrap">
-          <a-camera far="10000" near=".5" position="0 0 0"></a-camera>
-          <a-entity
-            id="controller"
-            oculus-touch-controls="hand: left"
-            visible="false"
-          ></a-entity>
-          <a-entity
-            id="controller-go"
-            oculus-go-controls
-            visible="false"
-          ></a-entity>
-        </a-entity>
-      </a-entity>
-    </a-scene>
+    <div class="world"></div>
   </body>
 
   <script>
-    const spaceMesh = document.querySelector('#space');
-    const decor = document.querySelector('#decor');
-    const pov = document.querySelector('#pov');
+    var width = 1366; //window.innerWidth,
+    height = 768; //window.innerHeight;
+    var renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+    });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(width, height);
+    var container = document.getElementsByClassName('world')[0];
+    var scene = new THREE.Scene();
+    var aspectRatio = width / height;
+    var nearPlane = 0.1;
+    var farPlane = 20000;
+    var camera = new THREE.OrthographicCamera(
+      width / -1.5,
+      width / 1.5,
+      height / 1.5,
+      height / -1.5,
+      nearPlane,
+      farPlane
+    );
+    camera.position.z = 200;
+    container.appendChild(renderer.domElement);
+
+    // let cameraWrap = new THREE.Group();
+    // cameraWrap.add(camera);
+    // scene.add(cameraWrap);
+
+    scene.add(camera);
+
+    renderer.render(scene, camera);
 
     // SHADE ////////////////////////////////////////
     const mWidth = 200;
     const mHeight = 200;
+    const rainbow = rainbowPalette().map((x) => new THREE.Color(x));
 
     let instanceCount = 0;
     let aOrigin = [];
@@ -157,7 +185,7 @@
     }`;
     let uniforms = {
       uTime: new THREE.Uniform(0),
-      uTheme: new THREE.Uniform(0),
+      uTheme: new THREE.Uniform(4),
     };
     let material = new THREE.ShaderMaterial({
       fragmentShader: fragmentShader,
@@ -168,36 +196,30 @@
     // let material = new THREE.ShaderMaterial();
     let mesh = new THREE.Mesh(instancedGeometry, material);
 
-    spaceMesh.object3D.add(mesh);
-
-    let gap = 1 / Math.pow(2, 60);
-    setInterval(() => {
-      gap = Math.min(gap * 2, 1 / 2);
-      uniforms.uTime.value += gap;
-      // spaceMesh.object3D.rotation.z += 0.01;
-    }, 16);
+    scene.add(mesh);
 
     // CONTROLS /////////////////////////////////////////////////
 
     // Controller listener
-    const controller = document.getElementById('controller');
-    const controllerGo = document.getElementById('controller-go');
     const cameraChange = () => {
-      if (pov.object3D.position.x) {
-        pov.setAttribute('position', '0 0 0');
-        pov.setAttribute('rotation', '0 0 0');
+      if (camera.position.x) {
+        // cameraWrap.position.set(0, 0, 0);
+        // cameraWrap.rotation.set(0, 0, 0);
+        camera.position.set(0, 0, 0);
+        camera.rotation.set(0, 0, 0);
+        renderer.render(scene, camera);
       } else {
-        pov.setAttribute('position', '-400 400 400');
-        pov.setAttribute('rotation', '-45 -45 0');
+        // cameraWrap.position.set(-400, 400, 400);
+        // cameraWrap.rotateY(-Math.PI / 4);
+        camera.position.set(-600, 600, 600);
+        camera.rotateY(-Math.PI / 4);
+        camera.rotateX(-Math.PI / 4 + 0.17);
       }
+      renderer.render(scene, camera);
     };
     const themeChange = () => {
       uniforms.uTheme.value = (uniforms.uTheme.value + 1) % 5;
     };
-    controller.addEventListener('triggerdown', themeChange);
-    controller.addEventListener('gripdown', cameraChange);
-    controllerGo.addEventListener('triggerdown', themeChange);
-    controllerGo.addEventListener('trackpaddown', cameraChange);
     window.addEventListener('keydown', (e) => {
       if (e.key === 'q') {
         themeChange();
@@ -274,7 +296,7 @@
     );
     gridTop.position.y = gridWidth / 2;
     gridTop.rotation.x = Math.PI / 2;
-    decor.object3D.add(gridTop);
+    scene.add(gridTop);
 
     const gridBottom = new THREE.LineSegments(
       baseGrid.geometry,
@@ -282,7 +304,7 @@
     );
     gridBottom.position.y = -gridWidth / 2;
     gridBottom.rotation.x = -Math.PI / 2;
-    decor.object3D.add(gridBottom);
+    scene.add(gridBottom);
 
     const gridRight = new THREE.LineSegments(
       baseGrid.geometry,
@@ -290,7 +312,7 @@
     );
     gridRight.position.x = gridWidth / 2;
     gridRight.rotation.y = -Math.PI / 2;
-    decor.object3D.add(gridRight);
+    scene.add(gridRight);
 
     const gridLeft = new THREE.LineSegments(
       baseGrid.geometry,
@@ -298,6 +320,30 @@
     );
     gridLeft.position.x = -gridWidth / 2;
     gridLeft.rotation.y = -Math.PI / 2;
-    decor.object3D.add(gridLeft);
+    scene.add(gridLeft);
+
+    cameraChange();
+    window.addEventListener('dblclick', function () {
+      var docElm = document.documentElement;
+
+      if (docElm.requestFullscreen) {
+        docElm.requestFullscreen();
+      } else if (docElm.mozRequestFullScreen) {
+        docElm.mozRequestFullScreen();
+      } else if (docElm.webkitRequestFullScreen) {
+        docElm.webkitRequestFullScreen();
+      }
+
+      window.addEventListener('click', function () {
+        setTimeout(() => {
+          let gap = 1 / Math.pow(2, 60);
+          setInterval(() => {
+            gap = Math.min(gap * 2, 1 / 2);
+            uniforms.uTime.value += gap;
+            renderer.render(scene, camera);
+          }, 16);
+        }, 3000);
+      });
+    });
   </script>
 </html>

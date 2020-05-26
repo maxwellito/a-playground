@@ -5,12 +5,7 @@ class Bullet {
     this.distanceLeft = 300;
     this.mesh.position.set(position.x, position.y, position.z);
 
-    this.raycaster = new THREE.Raycaster(
-      position,
-      direction,
-      0.01,
-      Bullet.STEP
-    );
+    this.raycaster = new THREE.Raycaster(position, direction, 0.01, 20);
   }
 
   /**
@@ -36,8 +31,11 @@ class Bullet {
 
     this.distanceLeft -= Bullet.STEP;
 
+    utils.lineFromRay(this.mesh.position.clone(), this.direction.clone());
+
     // Update raycaster
-    this.raycaster.set(this.mesh.position, this.direction);
+    this.raycaster.set(this.mesh.position.clone(), this.direction.clone());
+    return this.raycaster.intersectObjects(space.asteroids.children);
   }
 }
 

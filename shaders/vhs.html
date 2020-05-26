@@ -1,0 +1,315 @@
+<html>
+  <head>
+    <style>
+      html,
+      body {
+        background-color: #000;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="whole-thing-wrapper">
+      <div class="canvas-wrapper"></div>
+      <div class="gui-wrapper"></div>
+    </div>
+
+    <script src="../lib/three.js"></script>
+    <script src="../lib/EffectComposer.js"></script>
+    <script src="../lib/HorizontalBlurShader.js"></script>
+    <script src="../lib/VerticalBlurShader.js"></script>
+    <script src="../lib/CopyShader.js"></script>
+    <script src="../lib/ShaderPass.js"></script>
+    <script src="../lib/RenderPass.js"></script>
+    <script>
+      var scene, camera, renderer, controls;
+      var clock = new THREE.Clock();
+
+      function initScene() {
+        scene = new THREE.Scene();
+      }
+
+      function initCamera() {
+        camera = new THREE.PerspectiveCamera(
+          45,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          10000
+        );
+        camera.position.set(100, 100, 200);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+      }
+
+      function initRender() {
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth / 2, window.innerHeight / 2);
+
+        document.body.appendChild(renderer.domElement);
+      }
+
+      function initLight() {
+        scene.add(new THREE.AmbientLight(0xffffff));
+
+        var spotLight1 = new THREE.SpotLight(0xffffff);
+        spotLight1.position.set(-400, -400, -400);
+
+        var spotLight2 = new THREE.SpotLight(0xffffff);
+        spotLight2.position.set(400, 400, 400);
+
+        scene.add(spotLight1);
+        scene.add(spotLight2);
+      }
+
+      var box1, box2, box3;
+
+      function initContent() {
+        var group = new THREE.Group();
+
+        var geometry = new THREE.BoxGeometry(10, 10, 10);
+
+        var material = new THREE.MeshNormalMaterial({});
+        var materia2 = new THREE.MeshNormalMaterial({});
+        var materia3 = new THREE.MeshNormalMaterial({});
+
+        box1 = new THREE.Mesh(geometry, material);
+        box2 = new THREE.Mesh(geometry, materia2);
+        box3 = new THREE.Mesh(geometry, materia3);
+
+        box1.position.set(30, 40, 50);
+        box1.scale.set(5, 5, 5);
+
+        box2.position.set(50, 10, 10);
+        box2.scale.set(5, 5, 5);
+
+        box3.position.set(0, 60, 30);
+        box3.scale.set(5, 5, 5);
+
+        group.add(box1, box2, box3);
+
+        scene.add(group);
+
+        //// DECOR ////////////////////////////////////////////////////
+        const mWidth = 200;
+        const mHeight = 200;
+        function Grid(width, divisions) {
+          this.geometry = this.geometry || new THREE.BufferGeometry();
+          this.positions =
+            this.positions || new Float32Array((divisions + 1) * 2 * 2 * 3);
+          var positions = this.positions;
+          var bIndex = 0;
+          const mid = divisions / 2;
+          const z = 0;
+          const divWidth = width / divisions;
+
+          for (let x = 0; x <= divisions; x++) {
+            positions.set(
+              [
+                (x - mid) * divWidth,
+                -mid * divWidth,
+                z,
+                (x - mid) * divWidth,
+                mid * divWidth,
+                z,
+              ],
+              bIndex
+            );
+            bIndex += 6;
+          }
+
+          for (let y = 0; y <= divisions; y++) {
+            positions.set(
+              [
+                -mid * divWidth,
+                (y - mid) * divWidth,
+                z,
+                mid * divWidth,
+                (y - mid) * divWidth,
+                z,
+              ],
+              bIndex
+            );
+            bIndex += 6;
+          }
+
+          // Indexes
+          var indexes = new Uint16Array(bIndex / 3);
+          indexes.forEach((_, i) => (indexes[i] = i));
+
+          this.geometry.addAttribute(
+            'position',
+            new THREE.BufferAttribute(this.positions, 3)
+          );
+          this.geometry.setIndex(new THREE.BufferAttribute(indexes, 1));
+
+          // Material
+          this.gMaterial = this.gMaterial || new THREE.LineBasicMaterial();
+          this.gMaterial.color = new THREE.Color(0xffffff);
+
+          this.grid = new THREE.LineSegments(this.geometry, this.gMaterial);
+        }
+
+        const gridWidth = mWidth * 1.5;
+        const baseGrid = new Grid(gridWidth, 6);
+
+        const gridTop = new THREE.LineSegments(
+          baseGrid.geometry,
+          baseGrid.gMaterial
+        );
+        gridTop.position.y = gridWidth / 2;
+        gridTop.rotation.x = Math.PI / 2;
+        scene.add(gridTop);
+
+        const gridBottom = new THREE.LineSegments(
+          baseGrid.geometry,
+          baseGrid.gMaterial
+        );
+        gridBottom.position.y = -gridWidth / 2;
+        gridBottom.rotation.x = -Math.PI / 2;
+        scene.add(gridBottom);
+      }
+
+      var composer, renderPass;
+      function addEffect() {
+        composer = new THREE.EffectComposer(renderer);
+        renderPass = new THREE.RenderPass(scene, camera);
+        composer.addPass(renderPass);
+
+        var myEffect = {
+          uniforms: {
+            tDiffuse: { value: null },
+            resolution: {
+              value: new THREE.Vector2(
+                1,
+                window.innerHeight / window.innerWidth
+              ),
+            },
+            uMouse: { value: new THREE.Vector2(0.5, 0.3) },
+            uTime: { type: 'f', value: 0 },
+            uColor: {
+              type: 'v3',
+              value: new THREE.Vector3(0.0625, 0.625, 1.0),
+            },
+            uBrightness: { type: 'f', value: 0.2 },
+            uRefreshRate: { type: 'f', value: 70 },
+          },
+          vertexShader: `varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0 );
+              }`,
+          fragmentShader: `uniform float time;
+              uniform sampler2D tDiffuse;
+              uniform vec2 resolution;
+              varying vec2 vUv;
+              uniform vec2 uMouse;
+
+              uniform float uTime;
+              uniform vec3 uColor;
+              uniform float uBrightness;
+              uniform float uRefreshRate;
+
+              void main()  {
+                  vec2 newUV = vUv;
+
+                  float cc = mod(newUV.y*-75.0 + -uTime * 0.25, uRefreshRate);
+                  float ccGap = 2.5;
+                  if (cc < ccGap) {
+                    newUV.x += (ccGap - cc)*(ccGap - cc) * 0.006;
+                  }
+                  else if (cc > uRefreshRate - 0.1) {
+                    newUV.y -= 0.1;
+                  }
+                  else if (cc > uRefreshRate - 0.3) {
+                    newUV.x -= cos(cc + uTime/1000.0);
+                  }
+
+
+                  float r = texture2D(tDiffuse, newUV.xy - vec2(0.003, 0.001)).r;
+                  float g = texture2D(tDiffuse, newUV.xy).g;
+                  float b = (
+                    texture2D(tDiffuse, newUV.xy + vec2(0.008, 0.0)).b +
+                    texture2D(tDiffuse, newUV.xy + vec2(0.006, 0.0)).b +
+                    texture2D(tDiffuse, newUV.xy + vec2(0.004, 0.0)).b +
+                    texture2D(tDiffuse, newUV.xy + vec2(0.000, 0.0)).b
+                  ) / 4.0;
+                  
+                  // Interlacing
+                  float rrProgress = mod(newUV.y*-75.0 + -uTime * 0.25, uRefreshRate)/uRefreshRate;
+                  float opacity = 1.0 - uBrightness + (rrProgress)* uBrightness;
+
+                  float interWave = (cos((newUV.y + uTime/1500.0) * 800.0 ) + 1.0) / 2.0;
+                  opacity *= 0.85 + 0.15 * interWave;
+
+                  // Frame blinking
+                  if (mod(uTime, 4.0) > 2.0) {
+                    opacity *= 0.95;
+                  }
+
+                  // Glow
+                  vec4 currentColor = texture2D(tDiffuse, newUV.xy);
+                  float brightness = (currentColor.r + currentColor.g + currentColor.b) / 2.0;
+                  // opacity *= brightness;
+                  
+                  // Render
+                  float bc = 0.05 * (1.0 + interWave);
+                  opacity = opacity * opacity;
+                  vec4 color = vec4(r*opacity*0.9 + bc, g*opacity*0.9 + bc, b*opacity*0.9 + bc, 1.0);
+                  gl_FragColor = color;
+
+                  // The diff
+                  if (newUV.x < 0.5) {
+                  //  gl_FragColor = currentColor;
+                  }
+              }`,
+        };
+
+        customPass = new THREE.ShaderPass(myEffect);
+        customPass.renderToScreen = true;
+        composer.addPass(customPass);
+      }
+
+      /* 窗口变动触发 */
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      /* 初始化 */
+      function init() {
+        initScene();
+        initCamera();
+        initRender();
+        addEffect();
+        initLight();
+        // initControls();
+        initContent();
+        /* 监听事件 */
+        window.addEventListener('resize', onWindowResize, false);
+      }
+
+      /* 循环渲染 */
+      function animate() {
+        requestAnimationFrame(animate);
+        box1.rotation.x += 0.01;
+        box1.rotation.y += 0.02;
+        box2.rotation.z += 0.01;
+        box2.rotation.x += 0.02;
+        box3.rotation.y += 0.01;
+        box3.rotation.z += 0.02;
+        customPass.uniforms.uTime.value += 1;
+        renderer.render(scene, camera);
+        composer.render();
+      }
+
+      /* 初始加载 */
+      (function () {
+        init();
+        animate();
+        onWindowResize();
+      })();
+    </script>
+  </body>
+</html>
